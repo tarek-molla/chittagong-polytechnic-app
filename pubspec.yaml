@@ -1,0 +1,72 @@
+name: cpi_app
+description: "A premium Flutter portal application for Chattogram Polytechnic Institute."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Core
+  cupertino_icons: ^1.0.8
+  
+  # Supabase
+  supabase_flutter: ^2.9.0
+  
+  # Email
+  emailjs: ^1.0.0
+  
+  # HTTP Requests
+  http: ^1.2.0
+  
+  # Blurhash for glassmorphism
+  flutter_blurhash: ^0.9.1
+  
+  # PDF Generation
+  pdf: ^3.10.7
+  file_saver: ^0.3.0
+  path_provider: ^2.1.0
+  open_file: ^3.3.2
+  permission_handler: ^11.0.0
+  
+  # File Picker for Notice Attachments
+  file_selector: ^1.0.3
+  
+  # Path utilities
+  path: ^1.9.0
+  
+  # URL Launcher
+  url_launcher: ^6.3.0
+  
+  intl: ^0.19.0
+  
+  # Youtube Player
+  youtube_player_flutter: ^10.0.1
+
+  # Webview
+  flutter_inappwebview: ^6.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/cpi_logo.png
+    - assets/cpi_bg.png
+    - assets/cpi_bg2.png
+    - assets/cpi_bg3.png
+    - assets/cpi_bg4.png
+    - assets/cpi_bg5.png
+    - assets/cpi_bg6.png
+    - assets/cpi_bg7.png
+    - assets/cpi_bg8.png
+    - assets/cpi_bg9.png
+    - assets/cpi_bg10.png
