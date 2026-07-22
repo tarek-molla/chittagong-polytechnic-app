@@ -1,7 +1,6 @@
 // =============================================================================
 // lib/views/teacher/teacher_dashboard.dart
-// Teacher Dashboard — CPI Faculty Portal
-// 1:1 Student Dashboard Structure, Glassmorphic Navbar & Animations Parity
+// CPI Faculty Portal — Production-Ready Teacher Dashboard
 // =============================================================================
 
 import 'dart:async';
@@ -13,6 +12,7 @@ import '../../core/router.dart';
 import '../../core/theme_provider.dart';
 import '../../../widgets/theme_toggle_switch.dart';
 import '../../core/colors.dart';
+import 'attendance_management_view.dart';
 
 class TeacherDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -167,9 +167,11 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     if (_pageController.hasClients && _pageController.page != null) {
       final currentIndex = _pageController.page!.round();
       if (_selectedNavIndex != currentIndex) {
-        setState(() {
-          _selectedNavIndex = currentIndex;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedNavIndex = currentIndex;
+          });
+        }
         if (currentIndex == 0) {
           _triggerDashboardReentrySequence();
         }
@@ -194,6 +196,8 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   }
 
   void _updateLiveScheduleEngine() {
+    if (!mounted) return;
+
     final now = DateTime.now();
     final List<String> weekDays = [
       'SUN',
@@ -255,13 +259,138 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     AppThemeController.themeModeNotifier.removeListener(_themeListener);
-    _scrollController.dispose();
-    _pageController.dispose();
     _profileBgTimer?.cancel();
     _timeCheckerTimer?.cancel();
+    _scrollController.dispose();
+    _pageController.dispose();
     _contentAnimationController.dispose();
     _staggerController.dispose();
     super.dispose();
+  }
+
+  // Navigates directly to the dedicated full-page Routine view
+  void _navigateToRoutinePage(BuildContext context) {
+    Navigator.pushNamed(context, AppRoutes.teacherRoutine);
+  }
+
+  // Opens Dedicated Faculty Search Experience
+  void _openFacultySearchPage(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Faculty Search",
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, anim1, anim2) {
+        final isDark = AppThemeController.isDarkMode;
+        return Scaffold(
+          backgroundColor: isDark
+              ? const Color(0xFF020617).withAlpha(240)
+              : AppColors.lightBackground.withAlpha(245),
+          body: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: isDark
+                              ? Colors.white
+                              : AppColors.lightPrimaryText,
+                          size: 20,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(12)
+                                : AppColors.lightCardBorderAlt,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withAlpha(25)
+                                  : AppColors.lightCardBorder,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.search_rounded,
+                                color: Color(0xFF10B981),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  autofocus: true,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    fontSize: 14,
+                                    fontFamily: 'Geist',
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        "Search student roll, name, subject...",
+                                    hintStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : AppColors.lightCaptionText,
+                                      fontSize: 13,
+                                      fontFamily: 'Geist',
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Search student roll, syllabus, or assessment ledger",
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white38
+                                : AppColors.lightSubtitleText,
+                            fontSize: 13,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildOptionsDrawer(BuildContext context) {
@@ -708,9 +837,11 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     return Expanded(
       child: InkWell(
         onTap: () {
-          setState(() {
-            _selectedNavIndex = index;
-          });
+          if (mounted) {
+            setState(() {
+              _selectedNavIndex = index;
+            });
+          }
           _pageController.jumpToPage(index);
 
           if (index == 0) {
@@ -934,12 +1065,35 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                               ],
                             ),
                           ),
+                          // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
+                              // Theme Toggle
                               const ThemeToggleSwitch(),
                               const SizedBox(width: 8),
+
+                              // Search Button
+                              IconButton(
+                                onPressed: () =>
+                                    _openFacultySearchPage(context),
+                                icon: const Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFF10B981),
+                                  size: 18,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: isDark
+                                      ? Colors.white.withAlpha(12)
+                                      : Colors.black.withAlpha(8),
+                                  padding: const EdgeInsets.all(8),
+                                  minimumSize: const Size(36, 36),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // Power Off / Logout
                               IconButton(
                                 onPressed: () => Navigator.pushReplacementNamed(
                                   context,
@@ -977,7 +1131,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                           20.0,
                           24.0,
                           20.0,
-                          130.0,
+                          160.0,
                         ),
                         decoration: BoxDecoration(
                           color: isDark
@@ -999,7 +1153,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Live Lecture Tracker
+                            // Interactive Live Lecture Tracker Card
                             AnimatedBuilder(
                               animation: _staggerAnimation,
                               builder: (context, child) {
@@ -1017,7 +1171,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                 );
                               },
                             ),
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 24),
 
                             // Faculty Operations Control Center
                             AnimatedBuilder(
@@ -1066,6 +1220,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                               Icons.fact_check_rounded,
                                               const Color(0xFF10B981),
                                               () {
+                                                // Using router with proper arguments
                                                 Navigator.pushNamed(
                                                   context,
                                                   AppRoutes.attendanceLogger,
@@ -1073,15 +1228,18 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                                       AttendanceLoggerArgs(
                                                         teacher: widget.user,
                                                         subjectCode: '66641',
+                                                        subjectName:
+                                                            'Data Structures',
                                                         className: 'CMT-4th-B2',
                                                         semester: 4,
+                                                        department: 'CST',
                                                       ),
                                                 );
                                               },
                                               isDark,
                                             ),
                                             _buildActionTile(
-                                              "Upload Marks Ledger",
+                                              "Continuous Assessment",
                                               Icons
                                                   .drive_file_rename_outline_rounded,
                                               const Color(0xFF0284C7),
@@ -1100,6 +1258,40 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                               },
                                               isDark,
                                             ),
+                                            _buildActionTile(
+                                              "Syllabus & Topics",
+                                              Icons.menu_book_rounded,
+                                              const Color(0xFF8B5CF6),
+                                              () {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      "Syllabus Manager coming soon!",
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
+                                            _buildActionTile(
+                                              "Post Class Notice",
+                                              Icons.campaign_rounded,
+                                              const Color(0xFFF59E0B),
+                                              () {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      "Notice Dispatcher coming soon!",
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -1108,9 +1300,13 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                 );
                               },
                             ),
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 24),
 
-                            // Faculty Course Management
+                            // QUICK STATS BANNER
+                            _buildQuickStatsBanner(isDark),
+                            const SizedBox(height: 24),
+
+                            // Faculty Course Assignments & Syllabus Tracking
                             AnimatedBuilder(
                               animation: _staggerAnimation,
                               builder: (context, child) {
@@ -1130,7 +1326,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                             left: 4.0,
                                           ),
                                           child: Text(
-                                            "Faculty Course Assignments",
+                                            "Assigned Courses & Syllabus",
                                             style: TextStyle(
                                               color: isDark
                                                   ? Colors.white
@@ -1164,22 +1360,125 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     );
   }
 
+  // ==================== BUILD METHODS ====================
+
   Widget _buildLiveScheduleTimelineTracker(bool isDark) {
+    return _InteractiveScaleButton(
+      onTap: () => _navigateToRoutinePage(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlpha(12)
+                : AppColors.lightCardBorder,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withAlpha(isDark ? 20 : 30),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.radar_rounded,
+                color: Color(0xFF10B981),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "LIVE ACTIVE ASSIGNMENT",
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white38
+                              : AppColors.lightCaptionText,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Geist',
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      // MAXIMIZE BUTTON - Visual indicator only
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF10B981,
+                          ).withAlpha(isDark ? 20 : 30),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFF10B981).withAlpha(50),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.open_in_full_rounded,
+                          color: Color(0xFF10B981),
+                          size: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _currentClassDisplay,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Geist',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Next Up: $_nextClassDisplay",
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white54
+                          : AppColors.lightSubtitleText,
+                      fontSize: 11,
+                      fontFamily: 'Geist',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStatsBanner(bool isDark) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
+        color: isDark
+            ? Colors.white.withAlpha(6)
+            : AppColors.lightCardBorderAlt,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withAlpha(8),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
         border: Border.all(
           color: isDark
               ? Colors.white.withAlpha(12)
@@ -1187,60 +1486,48 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
+          _buildStatItem("Students", "184 Total", isDark),
           Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withAlpha(isDark ? 20 : 30),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.radar_rounded,
-              color: Color(0xFF10B981),
-              size: 20,
-            ),
+            width: 1,
+            height: 24,
+            color: isDark ? Colors.white12 : Colors.black12,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "LIVE ACTIVE ASSIGNMENT",
-                  style: TextStyle(
-                    color: isDark ? Colors.white38 : AppColors.lightCaptionText,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Geist',
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _currentClassDisplay,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Next Up: $_nextClassDisplay",
-                  style: TextStyle(
-                    color: isDark
-                        ? Colors.white54
-                        : AppColors.lightSubtitleText,
-                    fontSize: 11,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-              ],
-            ),
+          _buildStatItem("Attendance", "2/3 Logged", isDark),
+          Container(
+            width: 1,
+            height: 24,
+            color: isDark ? Colors.white12 : Colors.black12,
           ),
+          _buildStatItem("Marks Ledger", "88% Uploaded", isDark),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, bool isDark) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.lightPrimaryText,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Geist',
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: isDark ? Colors.white38 : AppColors.lightCaptionText,
+            fontSize: 10,
+            fontFamily: 'Geist',
+          ),
+        ),
+      ],
     );
   }
 
@@ -1306,12 +1593,13 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   }
 
   Widget _buildFacultyManagementGrid(bool isDark) {
-    final List<Map<String, String>> courses = [
+    final List<Map<String, dynamic>> courses = [
       {
         'code': '6641',
         'name': 'Application Development',
         'class': 'CMT-4th-B2',
         'lectures': '23/26 completed',
+        'syllabusProgress': 0.88,
         'status': 'Ongoing',
       },
       {
@@ -1319,6 +1607,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         'name': 'Computer Networking',
         'class': 'CMT-4th-A1',
         'lectures': '21/28 completed',
+        'syllabusProgress': 0.75,
         'status': 'Ongoing',
       },
       {
@@ -1326,6 +1615,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         'name': 'Cyber Security',
         'class': 'CMT-4th-B2',
         'lectures': '29/30 completed',
+        'syllabusProgress': 0.96,
         'status': 'Wrap Up',
       },
     ];
@@ -1338,6 +1628,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
       itemBuilder: (context, index) {
         final course = courses[index];
         final isWrapUp = course['status'] == 'Wrap Up';
+        final double progress = course['syllabusProgress'];
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -1361,96 +1652,221 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                   : AppColors.lightCardBorder,
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color:
-                      (isWrapUp
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color:
+                          (isWrapUp
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF0284C7))
+                              .withAlpha(isDark ? 25 : 20),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Text(
+                        course['code']!,
+                        style: TextStyle(
+                          color: isWrapUp
                               ? const Color(0xFF10B981)
-                              : const Color(0xFF0284C7))
-                          .withAlpha(isDark ? 25 : 20),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    course['code']!,
-                    style: TextStyle(
-                      color: isWrapUp
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFF0284C7),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                      fontFamily: 'Geist',
+                              : const Color(0xFF0284C7),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontFamily: 'Geist',
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      course['name']!,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          course['name']!,
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.lightPrimaryText,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          "${course['class']} • ${course['lectures']}",
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white.withAlpha(140)
+                                : AppColors.lightCaptionText,
+                            fontSize: 11,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (isWrapUp
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFD97706))
+                              .withAlpha(isDark ? 25 : 20),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color:
+                            (isWrapUp
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFD97706))
+                                .withAlpha(50),
+                      ),
+                    ),
+                    child: Text(
+                      course['status']!.toUpperCase(),
                       style: TextStyle(
-                        color: isDark
-                            ? Colors.white
-                            : AppColors.lightPrimaryText,
-                        fontSize: 13.5,
+                        color: isWrapUp
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFD97706),
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Geist',
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "${course['class']} • ${course['lectures']}",
-                      style: TextStyle(
-                        color: isDark
-                            ? Colors.white.withAlpha(140)
-                            : AppColors.lightCaptionText,
-                        fontSize: 11,
-                        fontFamily: 'Geist',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Syllabus Progress Bar
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 5,
+                        backgroundColor: isDark
+                            ? Colors.white10
+                            : AppColors.lightCardBorderAlt,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isWrapUp
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF0284C7),
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    "${(progress * 100).toInt()}% Syllabus",
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white70
+                          : AppColors.lightSubtitleText,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Geist',
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color:
-                      (isWrapUp
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFFD97706))
-                          .withAlpha(isDark ? 25 : 20),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color:
-                        (isWrapUp
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFFD97706))
-                            .withAlpha(50),
+              const SizedBox(height: 12),
+              // Direct Shortcut Chips
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _buildMicroShortcutChip(
+                    "Log Attendance",
+                    Icons.check_circle_outline_rounded,
+                    const Color(0xFF10B981),
+                    () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.attendanceLogger,
+                        arguments: AttendanceLoggerArgs(
+                          teacher: widget.user,
+                          subjectCode: course['code'],
+                          subjectName: course['name'],
+                          className: course['class'],
+                          semester: 4,
+                          department: 'CST',
+                        ),
+                      );
+                    },
+                    isDark,
                   ),
-                ),
-                child: Text(
-                  course['status']!.toUpperCase(),
-                  style: TextStyle(
-                    color: isWrapUp
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFD97706),
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Geist',
+                  const SizedBox(width: 8),
+                  _buildMicroShortcutChip(
+                    "Marks",
+                    Icons.edit_note_rounded,
+                    const Color(0xFF0284C7),
+                    () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.marksUploader,
+                        arguments: MarksUploaderArgs(
+                          teacher: widget.user,
+                          subjectCode: course['code'],
+                          subjectName: course['name'],
+                          semester: 4,
+                        ),
+                      );
+                    },
+                    isDark,
                   ),
-                ),
+                ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildMicroShortcutChip(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+    bool isDark,
+  ) {
+    return _InteractiveScaleButton(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withAlpha(isDark ? 20 : 15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withAlpha(40)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 13),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Geist',
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

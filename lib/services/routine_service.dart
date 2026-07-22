@@ -9,6 +9,8 @@ class RoutineEntry {
   final int day; // 1 for Monday, 7 for Sunday
   final String type;
   final String color;
+  final String? batchName; // Added for teacher view
+  final String? className; // Added for teacher view
 
   RoutineEntry({
     required this.subjectName,
@@ -19,6 +21,8 @@ class RoutineEntry {
     required this.day,
     required this.type,
     required this.color,
+    this.batchName,
+    this.className,
   });
 
   factory RoutineEntry.fromJson(Map<String, dynamic> json) {
@@ -31,6 +35,8 @@ class RoutineEntry {
       day: json['day'] is int ? json['day'] : _getDayNumber(json['day']),
       type: json['type'] ?? 'Theory',
       color: json['color'] ?? '#00E5FF',
+      batchName: json['batch_name'] ?? json['batch'] ?? null,
+      className: json['class_name'] ?? json['class'] ?? null,
     );
   }
 
@@ -193,7 +199,10 @@ class RoutineService {
 
   /// Provides a stream that immediately fetches data, then refreshes every 30 seconds
   /// This fixes the long loading time issue
-  Stream<List<RoutineEntry>> getRoutineStream(String department, int semester) async* {
+  Stream<List<RoutineEntry>> getRoutineStream(
+    String department,
+    int semester,
+  ) async* {
     // ✅ IMMEDIATELY yield data on first subscription (no waiting)
     try {
       yield await fetchRoutine(department, semester);
@@ -201,7 +210,7 @@ class RoutineService {
       print('❌ Initial fetch error: $e');
       yield [];
     }
-    
+
     // Then refresh every 30 seconds
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
       try {

@@ -11,9 +11,10 @@ import '../views/student/student_dashboard.dart';
 import '../views/student/attendance_detail_view.dart';
 import '../views/student/results_ledger_view.dart';
 import '../views/student/routine_view.dart';
+import '../views/teacher/teacher_routine_view.dart';
 import '../views/welcome/welcome_view.dart';
 import '../views/teacher/teacher_dashboard.dart';
-import '../views/teacher/attendance_logger_view.dart';
+import '../views/teacher/attendance_management_view.dart';
 import '../views/teacher/marks_uploader_view.dart';
 import '../views/admin/admin_dashboard.dart';
 import '../views/admin/admission_triage_view.dart';
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String attendanceDetail = '/student/attendance';
   static const String resultsLedger = '/student/results';
   static const String routine = '/student/routine';
+  static const String teacherRoutine = '/teacher/routine';
   static const String welcome = '/welcome';
 
   static const String teacherDashboard = '/teacher/dashboard';
@@ -56,14 +58,18 @@ class AdminRouteArgs {
 class AttendanceLoggerArgs {
   final AppUser teacher;
   final String subjectCode;
+  final String subjectName;
   final String className;
   final int semester;
+  final String department;
 
   const AttendanceLoggerArgs({
     required this.teacher,
     required this.subjectCode,
+    required this.subjectName,
     required this.className,
     required this.semester,
+    required this.department,
   });
 }
 
@@ -132,6 +138,12 @@ class AppRouter {
           builder: (_) => RoutineView(user: args.user),
         );
 
+      case AppRoutes.teacherRoutine:
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => const TeacherRoutineView(),
+        );
+
       case AppRoutes.teacherDashboard:
         final args = _requireArgs<TeacherRouteArgs>(settings);
         return _slideRoute(
@@ -143,11 +155,13 @@ class AppRouter {
         final args = _requireArgs<AttendanceLoggerArgs>(settings);
         return _slideRoute(
           settings: settings,
-          builder: (_) => AttendanceLoggerView(
+          builder: (_) => AttendanceManagementView(
             teacher: args.teacher,
-            subjectCode: args.subjectCode,
             className: args.className,
+            subjectCode: args.subjectCode,
+            subjectName: args.subjectName,
             semester: args.semester,
+            department: args.department,
           ),
         );
 
