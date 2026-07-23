@@ -6,13 +6,18 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-
+import '../../services/supabase_service.dart';
 import '../../models/user.dart' as user_model;
 import '../../core/router.dart';
 import '../../core/theme_provider.dart';
 import '../../../widgets/theme_toggle_switch.dart';
 import '../../core/colors.dart';
 import 'attendance_management_view.dart';
+import 'support_view.dart';
+import 'help_support_view.dart';
+import 'alerts_view.dart';
+import 'profile_view.dart';
+import 'teacher_search_delegate.dart';
 
 class TeacherDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -29,7 +34,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   late PageController _pageController;
 
   Timer? _profileBgTimer;
-  Timer? _timeCheckerTimer;
 
   late AnimationController _contentAnimationController;
   late AnimationController _staggerController;
@@ -40,9 +44,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   int _currentBgIndex = 0;
   int _selectedNavIndex = 0;
 
-  String _currentClassDisplay = "No Active Lecture";
-  String _nextClassDisplay = "Day Completed / No Class";
-
   final List<String> _bgAssets = [
     'assets/cpi_bg.png',
     'assets/cpi_bg2.png',
@@ -50,62 +51,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     'assets/cpi_bg4.png',
     'assets/cpi_bg5.png',
   ];
-
-  // Routine Matrix Configuration for Teachers
-  final Map<String, List<Map<String, dynamic>>> _teacherRoutine = {
-    'SUN': [
-      {
-        'subject': 'Data Structures',
-        'room': '302',
-        'class': 'CMT-3rd-A',
-        'start': '08:00',
-        'end': '09:30',
-      },
-      {
-        'subject': 'Microprocessor Lab',
-        'room': 'LAB-2',
-        'class': 'CMT-5th-B',
-        'start': '10:00',
-        'end': '12:15',
-      },
-    ],
-    'MON': [
-      {
-        'subject': 'OOP in Java',
-        'room': '204',
-        'class': 'CMT-3rd-B',
-        'start': '09:30',
-        'end': '11:00',
-      },
-    ],
-    'TUE': [
-      {
-        'subject': 'Data Structures',
-        'room': '302',
-        'class': 'CMT-3rd-A',
-        'start': '08:00',
-        'end': '09:30',
-      },
-    ],
-    'WED': [
-      {
-        'subject': 'System Analysis',
-        'room': '401',
-        'class': 'CMT-5th-A',
-        'start': '11:00',
-        'end': '12:30',
-      },
-    ],
-    'THU': [
-      {
-        'subject': 'OOP in Java',
-        'room': 'LAB-1',
-        'class': 'CMT-3rd-B',
-        'start': '08:00',
-        'end': '10:15',
-      },
-    ],
-  };
 
   @override
   void initState() {
@@ -138,8 +83,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
       CurvedAnimation(parent: _staggerController, curve: Curves.easeOutCubic),
     );
 
-    _updateLiveScheduleEngine();
-
     _profileBgTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
         setState(() {
@@ -147,11 +90,6 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         });
       }
     });
-
-    _timeCheckerTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (timer) => _updateLiveScheduleEngine(),
-    );
 
     _contentAnimationController.forward();
     _staggerController.forward();
@@ -195,72 +133,11 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     _staggerController.forward();
   }
 
-  void _updateLiveScheduleEngine() {
-    if (!mounted) return;
-
-    final now = DateTime.now();
-    final List<String> weekDays = [
-      'SUN',
-      'MON',
-      'TUE',
-      'WED',
-      'THU',
-      'FRI',
-      'SAT',
-    ];
-    String currentDayStr = weekDays[now.weekday % 7];
-
-    if (!_teacherRoutine.containsKey(currentDayStr)) {
-      if (mounted) {
-        setState(() {
-          _currentClassDisplay = "No Active Lectures";
-          _nextClassDisplay = "Weekend / Off-duty block";
-        });
-      }
-      return;
-    }
-
-    final todayClasses = _teacherRoutine[currentDayStr]!;
-    String activeClass = "No Active Lecture";
-    String nextClass = "Day Completed";
-    int currentMinutes = (now.hour * 60) + now.minute;
-
-    for (int i = 0; i < todayClasses.length; i++) {
-      final c = todayClasses[i];
-      final startParts = c['start'].split(':');
-      final endParts = c['end'].split(':');
-      int startMins =
-          (int.parse(startParts[0]) * 60) + int.parse(startParts[1]);
-      int endMins = (int.parse(endParts[0]) * 60) + int.parse(endParts[1]);
-
-      if (currentMinutes >= startMins && currentMinutes < endMins) {
-        activeClass = "${c['subject']} • ${c['class']} (Rm ${c['room']})";
-        if (i + 1 < todayClasses.length) {
-          final nextC = todayClasses[i + 1];
-          nextClass =
-              "${nextC['subject']} at ${nextC['start']} for ${nextC['class']}";
-        }
-        break;
-      } else if (currentMinutes < startMins) {
-        nextClass = "${c['subject']} at ${c['start']} (${c['class']})";
-        break;
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _currentClassDisplay = activeClass;
-        _nextClassDisplay = nextClass;
-      });
-    }
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     AppThemeController.themeModeNotifier.removeListener(_themeListener);
     _profileBgTimer?.cancel();
-    _timeCheckerTimer?.cancel();
     _scrollController.dispose();
     _pageController.dispose();
     _contentAnimationController.dispose();
@@ -508,16 +385,38 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                         Icons.info_outline_rounded,
                         "About Institution",
                         isDark,
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.teacherAboutInstitution,
+                            arguments: TeacherRouteArgs(user: widget.user),
+                          );
+                        },
                       ),
                       _buildDrawerFrostedLinkTile(
                         Icons.security_rounded,
                         "Privacy & Policy",
                         isDark,
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.teacherPrivacyPolicy,
+                            arguments: TeacherRouteArgs(user: widget.user),
+                          );
+                        },
                       ),
                       _buildDrawerFrostedLinkTile(
                         Icons.headset_mic_rounded,
                         "Help & Support Desk",
                         isDark,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HelpSupportView(user: widget.user),
+                            ),
+                          );
+                        },
                       ),
                       const Spacer(),
                       _InteractiveScaleButton(
@@ -664,9 +563,10 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                   calculatedAlpha,
                   dynamicImageOpacity,
                 ),
-                _buildPlaceholderPage("Faculty Chat & Support", isDark),
-                _buildPlaceholderPage("Faculty Alerts & Notices", isDark),
-                _buildPlaceholderPage("Faculty Profile Options", isDark),
+                // ✅ Support tab - use SupportView (quick support)
+                SupportView(user: widget.user),
+                AlertsView(user: widget.user),
+                ProfileView(user: widget.user),
               ],
             ),
           ),
@@ -842,6 +742,7 @@ class _TeacherDashboardState extends State<TeacherDashboard>
               _selectedNavIndex = index;
             });
           }
+          // ✅ For ALL tabs, use PageView (including Profile)
           _pageController.jumpToPage(index);
 
           if (index == 0) {
@@ -1076,8 +977,12 @@ class _TeacherDashboardState extends State<TeacherDashboard>
 
                               // Search Button
                               IconButton(
-                                onPressed: () =>
-                                    _openFacultySearchPage(context),
+                                onPressed: () {
+                                  showSearch(
+                                    context: context,
+                                    delegate: TeacherSearchDelegate(user: widget.user),
+                                  );
+                                },
                                 icon: const Icon(
                                   Icons.search_rounded,
                                   color: Color(0xFF10B981),
@@ -1244,16 +1149,21 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                                   .drive_file_rename_outline_rounded,
                                               const Color(0xFF0284C7),
                                               () {
+                                                // ✅ FIXED: Using the new Continuous Assessment route
                                                 Navigator.pushNamed(
                                                   context,
-                                                  AppRoutes.marksUploader,
-                                                  arguments: MarksUploaderArgs(
-                                                    teacher: widget.user,
-                                                    subjectCode: '66641',
-                                                    subjectName:
-                                                        'Data Structures',
-                                                    semester: 4,
-                                                  ),
+                                                  AppRoutes
+                                                      .continuousAssessment,
+                                                  arguments:
+                                                      ContinuousAssessmentArgs(
+                                                        teacher: widget.user,
+                                                        className: 'CMT-4th-B2',
+                                                        subjectCode: '66641',
+                                                        subjectName:
+                                                            'Data Structures',
+                                                        semester: 4,
+                                                        department: 'CST',
+                                                      ),
                                                 );
                                               },
                                               isDark,
@@ -1263,13 +1173,11 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                               Icons.menu_book_rounded,
                                               const Color(0xFF8B5CF6),
                                               () {
-                                                ScaffoldMessenger.of(
+                                                Navigator.pushNamed(
                                                   context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      "Syllabus Manager coming soon!",
-                                                    ),
+                                                  AppRoutes.teacherSyllabus,
+                                                  arguments: TeacherRouteArgs(
+                                                    user: widget.user,
                                                   ),
                                                 );
                                               },
@@ -1280,13 +1188,11 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                                               Icons.campaign_rounded,
                                               const Color(0xFFF59E0B),
                                               () {
-                                                ScaffoldMessenger.of(
+                                                Navigator.pushNamed(
                                                   context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      "Notice Dispatcher coming soon!",
-                                                    ),
+                                                  AppRoutes.teacherNotice,
+                                                  arguments: TeacherRouteArgs(
+                                                    user: widget.user,
                                                   ),
                                                 );
                                               },
@@ -1363,147 +1269,278 @@ class _TeacherDashboardState extends State<TeacherDashboard>
   // ==================== BUILD METHODS ====================
 
   Widget _buildLiveScheduleTimelineTracker(bool isDark) {
-    return _InteractiveScaleButton(
-      onTap: () => _navigateToRoutinePage(context),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(8),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withAlpha(12)
-                : AppColors.lightCardBorder,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withAlpha(isDark ? 20 : 30),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.radar_rounded,
-                color: Color(0xFF10B981),
-                size: 20,
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: _getCurrentClassStream(),
+      builder: (context, snapshot) {
+        final data =
+            snapshot.data ??
+            {
+              'current': 'No Active Lecture',
+              'next': 'Day Completed / No Class',
+            };
+
+        return _InteractiveScaleButton(
+          onTap: () => _navigateToRoutinePage(context),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withAlpha(8)
+                  : AppColors.lightBackground,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(8),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withAlpha(12)
+                    : AppColors.lightCardBorder,
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withAlpha(isDark ? 20 : 30),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.radar_rounded,
+                    color: Color(0xFF10B981),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "LIVE ACTIVE ASSIGNMENT",
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white38
+                                  : AppColors.lightCaptionText,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Geist',
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withAlpha(isDark ? 20 : 30),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFF10B981).withAlpha(50),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.open_in_full_rounded,
+                              color: Color(0xFF10B981),
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
                       Text(
-                        "LIVE ACTIVE ASSIGNMENT",
+                        data['current'] ?? 'No Active Lecture',
                         style: TextStyle(
                           color: isDark
-                              ? Colors.white38
-                              : AppColors.lightCaptionText,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
+                              ? Colors.white
+                              : AppColors.lightPrimaryText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                           fontFamily: 'Geist',
-                          letterSpacing: 0.8,
                         ),
                       ),
-                      // MAXIMIZE BUTTON - Visual indicator only
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF10B981,
-                          ).withAlpha(isDark ? 20 : 30),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: const Color(0xFF10B981).withAlpha(50),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.open_in_full_rounded,
-                          color: Color(0xFF10B981),
-                          size: 14,
+                      const SizedBox(height: 4),
+                      Text(
+                        "Next Up: ${data['next'] ?? 'Day Completed'}",
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white54
+                              : AppColors.lightSubtitleText,
+                          fontSize: 11,
+                          fontFamily: 'Geist',
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _currentClassDisplay,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Next Up: $_nextClassDisplay",
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.white54
-                          : AppColors.lightSubtitleText,
-                      fontSize: 11,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
+  Stream<Map<String, dynamic>> _getCurrentClassStream() async* {
+    while (true) {
+      try {
+        final client = SupabaseService.client;
+        final now = DateTime.now();
+        final dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+        final currentDay = dayNames[now.weekday - 1];
+        final currentTime =
+            '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+        final department = widget.user.department?.shortCode ?? 'CST';
+
+        final currentClass = await client
+            .from('routine')
+            .select()
+            .eq('department', department)
+            .eq('day', currentDay)
+            .eq('is_active', true)
+            .lte('start_time', currentTime)
+            .gte('end_time', currentTime)
+            .limit(1);
+
+        final nextClass = await client
+            .from('routine')
+            .select()
+            .eq('department', department)
+            .eq('day', currentDay)
+            .eq('is_active', true)
+            .gt('start_time', currentTime)
+            .order('start_time', ascending: true)
+            .limit(1);
+
+        yield {
+          'current': currentClass.isNotEmpty
+              ? '${currentClass[0]['subject_name']} • ${currentClass[0]['class_name']} (Rm ${currentClass[0]['room']})'
+              : 'No Active Lecture',
+          'next': nextClass.isNotEmpty
+              ? '${nextClass[0]['subject_name']} at ${nextClass[0]['start_time']}'
+              : 'Day Completed / No Class',
+        };
+      } catch (e) {
+        print('❌ Error fetching current class: $e');
+        yield {
+          'current': 'No Active Lecture',
+          'next': 'Day Completed / No Class',
+        };
+      }
+      await Future.delayed(const Duration(seconds: 30));
+    }
+  }
+
   Widget _buildQuickStatsBanner(bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withAlpha(6)
-            : AppColors.lightCardBorderAlt,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withAlpha(12)
-              : AppColors.lightCardBorder,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem("Students", "184 Total", isDark),
-          Container(
-            width: 1,
-            height: 24,
-            color: isDark ? Colors.white12 : Colors.black12,
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: _getDashboardStats(),
+      builder: (context, snapshot) {
+        final stats =
+            snapshot.data ??
+            {'students': '0', 'attendance': '0/0', 'marks': '0%'};
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withAlpha(6)
+                : AppColors.lightCardBorderAlt,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(12)
+                  : AppColors.lightCardBorder,
+            ),
           ),
-          _buildStatItem("Attendance", "2/3 Logged", isDark),
-          Container(
-            width: 1,
-            height: 24,
-            color: isDark ? Colors.white12 : Colors.black12,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem("Students", stats['students'].toString(), isDark),
+              Container(
+                width: 1,
+                height: 24,
+                color: isDark ? Colors.white12 : Colors.black12,
+              ),
+              _buildStatItem(
+                "Attendance",
+                stats['attendance'].toString(),
+                isDark,
+              ),
+              Container(
+                width: 1,
+                height: 24,
+                color: isDark ? Colors.white12 : Colors.black12,
+              ),
+              _buildStatItem("Marks Ledger", stats['marks'].toString(), isDark),
+            ],
           ),
-          _buildStatItem("Marks Ledger", "88% Uploaded", isDark),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Stream<Map<String, dynamic>> _getDashboardStats() async* {
+    while (true) {
+      try {
+        final client = SupabaseService.client;
+        final department = widget.user.department?.shortCode ?? 'CST';
+
+        final students = await client
+            .from('students')
+            .select()
+            .eq('class_name', 'CMT-4th-B2');
+        final studentCount = students.length;
+
+        final attendance = await client
+            .from('attendance_daily')
+            .select('status')
+            .eq('date', DateTime.now().toIso8601String().split('T').first)
+            .eq('department', department);
+
+        final present = attendance
+            .where((a) => a['status'] == 'Present')
+            .length;
+        final total = attendance.length;
+        final attendanceStr = total > 0 ? '$present/$total' : '0/0';
+
+        final marks = await client
+            .from('continuous_assessment')
+            .select('obtained_marks, total_marks')
+            .eq('department', department);
+
+        double totalObtained = 0;
+        double totalPossible = 0;
+        for (var m in marks) {
+          totalObtained += (m['obtained_marks'] ?? 0).toDouble();
+          totalPossible += (m['total_marks'] ?? 0).toDouble();
+        }
+        final marksPercent = totalPossible > 0
+            ? '${((totalObtained / totalPossible) * 100).toInt()}%'
+            : '0%';
+
+        yield {
+          'students': studentCount.toString(),
+          'attendance': attendanceStr,
+          'marks': marksPercent,
+        };
+      } catch (e) {
+        print('❌ Error fetching dashboard stats: $e');
+        yield {'students': '0', 'attendance': '0/0', 'marks': '0%'};
+      }
+      await Future.delayed(const Duration(seconds: 30));
+    }
   }
 
   Widget _buildStatItem(String label, String value, bool isDark) {
@@ -1592,246 +1629,274 @@ class _TeacherDashboardState extends State<TeacherDashboard>
     );
   }
 
-  Widget _buildFacultyManagementGrid(bool isDark) {
-    final List<Map<String, dynamic>> courses = [
-      {
-        'code': '6641',
-        'name': 'Application Development',
-        'class': 'CMT-4th-B2',
-        'lectures': '23/26 completed',
-        'syllabusProgress': 0.88,
-        'status': 'Ongoing',
-      },
-      {
-        'code': '6642',
-        'name': 'Computer Networking',
-        'class': 'CMT-4th-A1',
-        'lectures': '21/28 completed',
-        'syllabusProgress': 0.75,
-        'status': 'Ongoing',
-      },
-      {
-        'code': '6643',
-        'name': 'Cyber Security',
-        'class': 'CMT-4th-B2',
-        'lectures': '29/30 completed',
-        'syllabusProgress': 0.96,
-        'status': 'Wrap Up',
-      },
-    ];
+  Widget _buildCourseCard(Map<String, dynamic> course, bool isDark) {
+    final isWrapUp = course['status'] == 'Wrap Up';
+    final double progress = (course['syllabusProgress'] ?? 0.0).toDouble();
 
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: courses.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final course = courses[index];
-        final isWrapUp = course['status'] == 'Wrap Up';
-        final double progress = course['syllabusProgress'];
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withAlpha(8)
-                : AppColors.lightBackground,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(8),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withAlpha(12)
-                  : AppColors.lightCardBorder,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withAlpha(12)
+              : AppColors.lightCardBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color:
-                          (isWrapUp
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFF0284C7))
-                              .withAlpha(isDark ? 25 : 20),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        course['code']!,
-                        style: TextStyle(
-                          color: isWrapUp
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      (isWrapUp
                               ? const Color(0xFF10B981)
-                              : const Color(0xFF0284C7),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          fontFamily: 'Geist',
-                        ),
-                      ),
+                              : const Color(0xFF0284C7))
+                          .withAlpha(isDark ? 25 : 20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    course['code'] ?? '',
+                    style: TextStyle(
+                      color: isWrapUp
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF0284C7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      fontFamily: 'Geist',
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          course['name']!,
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white
-                                : AppColors.lightPrimaryText,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Geist',
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          "${course['class']} • ${course['lectures']}",
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white.withAlpha(140)
-                                : AppColors.lightCaptionText,
-                            fontSize: 11,
-                            fontFamily: 'Geist',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          (isWrapUp
-                                  ? const Color(0xFF10B981)
-                                  : const Color(0xFFD97706))
-                              .withAlpha(isDark ? 25 : 20),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color:
-                            (isWrapUp
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFD97706))
-                                .withAlpha(50),
-                      ),
-                    ),
-                    child: Text(
-                      course['status']!.toUpperCase(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course['name'] ?? '',
                       style: TextStyle(
-                        color: isWrapUp
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFD97706),
-                        fontSize: 9,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.lightPrimaryText,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Geist',
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Syllabus Progress Bar
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 5,
-                        backgroundColor: isDark
-                            ? Colors.white10
-                            : AppColors.lightCardBorderAlt,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isWrapUp
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF0284C7),
-                        ),
+                    const SizedBox(height: 3),
+                    Text(
+                      "${course['class'] ?? ''} • ${course['lectures'] ?? '0/0'}",
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withAlpha(140)
+                            : AppColors.lightCaptionText,
+                        fontSize: 11,
+                        fontFamily: 'Geist',
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "${(progress * 100).toInt()}% Syllabus",
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.white70
-                          : AppColors.lightSubtitleText,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              // Direct Shortcut Chips
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _buildMicroShortcutChip(
-                    "Log Attendance",
-                    Icons.check_circle_outline_rounded,
-                    const Color(0xFF10B981),
-                    () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.attendanceLogger,
-                        arguments: AttendanceLoggerArgs(
-                          teacher: widget.user,
-                          subjectCode: course['code'],
-                          subjectName: course['name'],
-                          className: course['class'],
-                          semester: 4,
-                          department: 'CST',
-                        ),
-                      );
-                    },
-                    isDark,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color:
+                      (isWrapUp
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFD97706))
+                          .withAlpha(isDark ? 25 : 20),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color:
+                        (isWrapUp
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFD97706))
+                            .withAlpha(50),
                   ),
-                  const SizedBox(width: 8),
-                  _buildMicroShortcutChip(
-                    "Marks",
-                    Icons.edit_note_rounded,
-                    const Color(0xFF0284C7),
-                    () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.marksUploader,
-                        arguments: MarksUploaderArgs(
-                          teacher: widget.user,
-                          subjectCode: course['code'],
-                          subjectName: course['name'],
-                          semester: 4,
-                        ),
-                      );
-                    },
-                    isDark,
+                ),
+                child: Text(
+                  (course['status'] ?? 'Ongoing').toUpperCase(),
+                  style: TextStyle(
+                    color: isWrapUp
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFD97706),
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Geist',
                   ),
-                ],
+                ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: isDark
+                        ? Colors.white10
+                        : AppColors.lightCardBorderAlt,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isWrapUp
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF0284C7),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "${(progress * 100).toInt()}% Syllabus",
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : AppColors.lightSubtitleText,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Geist',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildMicroShortcutChip(
+                "Log Attendance",
+                Icons.check_circle_outline_rounded,
+                const Color(0xFF10B981),
+                () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.attendanceLogger,
+                    arguments: AttendanceLoggerArgs(
+                      teacher: widget.user,
+                      subjectCode: course['code'] ?? '',
+                      subjectName: course['name'] ?? '',
+                      className: course['class'] ?? '',
+                      semester: 4,
+                      department: 'CST',
+                    ),
+                  );
+                },
+                isDark,
+              ),
+              const SizedBox(width: 8),
+              _buildMicroShortcutChip(
+                "Marks",
+                Icons.edit_note_rounded,
+                const Color(0xFF0284C7),
+                () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.continuousAssessment,
+                    arguments: ContinuousAssessmentArgs(
+                      teacher: widget.user,
+                      className: course['class'] ?? '',
+                      subjectCode: course['code'] ?? '',
+                      subjectName: course['name'] ?? '',
+                      semester: 4,
+                      department: 'CST',
+                    ),
+                  );
+                },
+                isDark,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacultyManagementGrid(bool isDark) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _getCoursesStream(),
+      builder: (context, snapshot) {
+        final courses = snapshot.data ?? [];
+
+        if (courses.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                'No courses assigned',
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : AppColors.lightCaptionText,
+                  fontSize: 14,
+                  fontFamily: 'Geist',
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: courses.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) =>
+              _buildCourseCard(courses[index], isDark),
         );
       },
     );
+  }
+
+  Stream<List<Map<String, dynamic>>> _getCoursesStream() async* {
+    while (true) {
+      try {
+        final client = SupabaseService.client;
+        final department = widget.user.department?.shortCode ?? 'CST';
+        final teacherName = widget.user.name;
+
+        final courses = await client
+            .from('routine')
+            .select()
+            .eq('department', department)
+            .eq('teacher_name', teacherName)
+            .eq('is_active', true)
+            .order('subject_name', ascending: true);
+
+        final transformed = courses
+            .map(
+              (c) => {
+                'code': c['subject_code'] ?? '',
+                'name': c['subject_name'] ?? '',
+                'class': c['class_name'] ?? '',
+                'lectures': '0/0',
+                'syllabusProgress': 0.0,
+                'status': 'Ongoing',
+              },
+            )
+            .toList();
+
+        yield transformed;
+      } catch (e) {
+        print('❌ Error fetching courses: $e');
+        yield [];
+      }
+      await Future.delayed(const Duration(seconds: 30));
+    }
   }
 
   Widget _buildMicroShortcutChip(

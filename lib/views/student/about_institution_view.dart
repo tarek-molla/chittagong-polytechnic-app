@@ -1,3 +1,5 @@
+// lib/views/student/about_institution_view.dart
+
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -28,6 +30,9 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
 
   final String _mapUrlString =
       "https://www.google.com/maps/place/Chattogram+Polytechnic+Institute/@22.369136,91.810557,1322m/data=!3m2!1e3!5s0x30acd8f525a6c075:0xab1700faa971f56e!4m6!3m5!1s0x30acd8f5243a983d:0x867de1c2f217eeb!8m2!3d22.3693276!4d91.8115314!16s%2Fm%2F0vpqq14?hl=en&entry=ttu&g_ep=EgoyMDI2MDcxNS4wIKXMDSoASAFQAw%3D%3D";
+
+  // ✅ Premium CPI Web Link
+  final String _cpiWebUrl = "https://cpi-project.netlify.app/";
 
   @override
   void initState() {
@@ -93,6 +98,18 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
     }
   }
 
+  // ✅ Launch CPI Website
+  Future<void> _launchCpiWebsite() async {
+    final Uri url = Uri.parse(_cpiWebUrl);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not launch CPI website.")),
+        );
+      }
+    }
+  }
+
   Widget _buildAnimatedBackground() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Positioned.fill(
@@ -116,7 +133,9 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
       aspectRatio: 16 / 9,
       builder: (context, player) {
         return Scaffold(
-          backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF8FAFC),
+          backgroundColor: isDark
+              ? const Color(0xFF020617)
+              : const Color(0xFFF8FAFC),
           body: Stack(
             children: [
               _buildAnimatedBackground(),
@@ -191,6 +210,7 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
                             ),
                             const SizedBox(height: 12),
 
+                            // Map Card
                             InkWell(
                               onTap: _launchMapsUrl,
                               borderRadius: BorderRadius.circular(20),
@@ -274,6 +294,16 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
                                 ),
                               ),
                             ),
+
+                            // ✅ PREMIUM CPI WEBSITE CARD
+                            const SizedBox(height: 16),
+                            _buildSectionLabel(
+                              Icons.web_rounded,
+                              "OFFICIAL WEBSITE",
+                              _primaryText,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildPremiumWebCard(isDark),
                           ],
                         ),
                       ),
@@ -351,6 +381,175 @@ class _AboutInstitutionViewState extends State<AboutInstitutionView>
           ),
         );
       },
+    );
+  }
+
+  // ✅ PREMIUM WEB CARD
+  Widget _buildPremiumWebCard(bool isDark) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      child: InkWell(
+        onTap: _launchCpiWebsite,
+        borderRadius: BorderRadius.circular(20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              width: double.infinity,
+              height: 100,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.03)
+                    : Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.black.withOpacity(0.08),
+                ),
+                boxShadow: [
+                  if (!isDark)
+                    BoxShadow(
+                      color: const Color(0xFF3B82F6).withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Animated gradient background
+                  Positioned(
+                    top: -50,
+                    right: -50,
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(
+                              0xFF3B82F6,
+                            ).withOpacity(isDark ? 0.15 : 0.1),
+                            const Color(0xFF3B82F6).withOpacity(0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -30,
+                    left: -30,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(
+                              0xFFA855F7,
+                            ).withOpacity(isDark ? 0.1 : 0.08),
+                            const Color(0xFFA855F7).withOpacity(0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      children: [
+                        // Glowing icon
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF3B82F6), Color(0xFFA855F7)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF3B82F6).withOpacity(0.3),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.language_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "CPI Portal Web",
+                                style: TextStyle(
+                                  fontFamily: 'Geist',
+                                  color: _primaryText,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.link_rounded,
+                                    color: const Color(0xFF3B82F6),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "cpi-project.netlify.app",
+                                    style: TextStyle(
+                                      fontFamily: 'Geist',
+                                      color: _secondaryText,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Arrow indicator with glow
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFF3B82F6).withOpacity(0.2),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Color(0xFF3B82F6),
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

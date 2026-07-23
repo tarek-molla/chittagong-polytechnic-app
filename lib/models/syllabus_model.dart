@@ -1,3 +1,5 @@
+// lib/models/syllabus_model.dart
+
 class SyllabusModel {
   final String id;
   final String subjectName;
@@ -29,18 +31,22 @@ class SyllabusModel {
 
   factory SyllabusModel.fromJson(Map<String, dynamic> json) {
     return SyllabusModel(
-      id: json['id'] as String,
-      subjectName: json['subject_name'] as String,
-      department: json['department'] as String,
-      semester: json['semester'] as int,
-      subjectCode: json['subject_code'] as String?,
-      content: json['content'] as String?,
-      fileUrl: json['file_url'] as String?,
-      fileName: json['file_name'] as String?,
-      uploadedBy: json['uploaded_by'] as String?,
-      isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      id: json['id'] ?? '',
+      subjectName: json['subject_name'] ?? '',
+      department: json['department'] ?? '',
+      semester: json['semester'] ?? 0,
+      subjectCode: json['subject_code'],
+      content: json['content'],
+      fileUrl: json['file_url'],
+      fileName: json['file_name'],
+      uploadedBy: json['uploaded_by'],
+      isActive: json['is_active'] ?? true,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
     );
   }
 
@@ -55,6 +61,7 @@ class SyllabusModel {
       'file_name': fileName,
       'uploaded_by': uploadedBy,
       'is_active': isActive,
+      'updated_at': DateTime.now().toIso8601String(),
     };
   }
 

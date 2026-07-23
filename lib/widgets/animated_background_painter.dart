@@ -6,8 +6,7 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-
-enum UserRole { student, teacher, admin }
+import '../models/user_role.dart';
 
 class AnimatedBackgroundPainter extends CustomPainter {
   final Animation<double> animation;

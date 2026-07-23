@@ -1,6 +1,6 @@
 // =============================================================================
 // lib/views/admin/admin_dashboard.dart
-// CPI Admin Command Center — 1:1 Student Dashboard Parity Edition
+// CPI Admin Command Center — Student/Teacher Dashboard Parity Edition
 // Features:
 //   • Dynamic Role Background Painter Integration (Amber/Orange Drift)
 //   • Exact Student Dashboard Glassmorphism Navbar & Animated Pill
@@ -8,13 +8,18 @@
 //   • Re-ordered Metrics Grid at top
 // =============================================================================
 
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
-
+import '../../services/supabase_service.dart';
 import '../../models/user.dart' as user_model;
 import '../../core/router.dart';
-import '../../widgets/animated_background_painter.dart';
+import '../../core/theme_provider.dart';
+import '../../../widgets/theme_toggle_switch.dart';
+import '../../core/colors.dart';
+import '../../models/user_role.dart' as role_model;
+import '../../widgets/animated_background_painter.dart' hide UserRole;
 import '../components/admin_operations_sheets.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -27,20 +32,59 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard>
-    with TickerProviderStateMixin {
-  late AnimationController _bgAnimController;
-  late AnimationController _pulseController;
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  late ScrollController _scrollController;
+  late PageController _pageController;
+
+  Timer? _profileBgTimer;
+
+  late AnimationController _contentAnimationController;
   late AnimationController _staggerController;
+  late AnimationController _pulseController;
+  late AnimationController _bgAnimController;
 
   late Animation<double> _staggerAnimation;
 
-  int _selectedSemester = 4;
+  double _scrollOffset = 0.0;
+  int _currentBgIndex = 0;
   int _selectedNavIndex = 0;
+  int _selectedSemester = 4;
   bool _isEmergencyModeActive = false;
+
+  final List<String> _bgAssets = [
+    'assets/cpi_bg.png',
+    'assets/cpi_bg2.png',
+    'assets/cpi_bg3.png',
+    'assets/cpi_bg4.png',
+    'assets/cpi_bg5.png',
+  ];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _scrollOffset = _scrollController.offset;
+        });
+      }
+    });
+
+    _pageController = PageController(initialPage: 0);
+    _pageController.addListener(_handlePageChange);
+
+    _contentAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
     _bgAnimController = AnimationController(
       vsync: this,
@@ -52,23 +96,71 @@ class _AdminDashboardState extends State<AdminDashboard>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _staggerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-
     _staggerAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _staggerController, curve: Curves.easeOutCubic),
     );
 
+    _profileBgTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentBgIndex = (_currentBgIndex + 1) % _bgAssets.length;
+        });
+      }
+    });
+
+    _contentAnimationController.forward();
+    _staggerController.forward();
+
+    AppThemeController.themeModeNotifier.addListener(_themeListener);
+  }
+
+  void _themeListener() {
+    if (mounted) setState(() {});
+  }
+
+  void _handlePageChange() {
+    if (_pageController.hasClients && _pageController.page != null) {
+      final currentIndex = _pageController.page!.round();
+      if (_selectedNavIndex != currentIndex) {
+        if (mounted) {
+          setState(() {
+            _selectedNavIndex = currentIndex;
+          });
+        }
+        if (currentIndex == 0) {
+          _triggerDashboardReentrySequence();
+        }
+      }
+    }
+  }
+
+  void _triggerDashboardReentrySequence() {
+    _scrollOffset = 0.0;
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    _replayAnimations();
+  }
+
+  void _replayAnimations() {
+    _contentAnimationController.reset();
+    _staggerController.reset();
+
+    _contentAnimationController.forward();
     _staggerController.forward();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    AppThemeController.themeModeNotifier.removeListener(_themeListener);
+    _profileBgTimer?.cancel();
+    _scrollController.dispose();
+    _pageController.dispose();
+    _contentAnimationController.dispose();
+    _staggerController.dispose();
     _bgAnimController.dispose();
     _pulseController.dispose();
-    _staggerController.dispose();
     super.dispose();
   }
 
@@ -87,7 +179,7 @@ class _AdminDashboardState extends State<AdminDashboard>
             const Icon(Icons.bolt_rounded, color: Color(0xFFF59E0B), size: 20),
             const SizedBox(width: 10),
             Text(
-              "Launching $title Modal...",
+              "Launching $title...",
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -95,6 +187,371 @@ class _AdminDashboardState extends State<AdminDashboard>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // Opens Dedicated Admin Search Experience
+  void _openAdminSearchPage(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Admin Search",
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, anim1, anim2) {
+        final isDark = AppThemeController.isDarkMode;
+        return Scaffold(
+          backgroundColor: isDark
+              ? const Color(0xFF020617).withAlpha(240)
+              : AppColors.lightBackground.withAlpha(245),
+          body: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: isDark
+                              ? Colors.white
+                              : AppColors.lightPrimaryText,
+                          size: 20,
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(12)
+                                : AppColors.lightCardBorderAlt,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withAlpha(25)
+                                  : AppColors.lightCardBorder,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.search_rounded,
+                                color: Color(0xFFF59E0B),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  autofocus: true,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    fontSize: 14,
+                                    fontFamily: 'Geist',
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        "Search students, faculty, departments...",
+                                    hintStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white38
+                                          : AppColors.lightCaptionText,
+                                      fontSize: 13,
+                                      fontFamily: 'Geist',
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Search students, faculty, or departments",
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white38
+                                : AppColors.lightSubtitleText,
+                            fontSize: 13,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionsDrawer(BuildContext context) {
+    final isDark = AppThemeController.isDarkMode;
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(32),
+        bottomLeft: Radius.circular(32),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: Container(
+          width: 295,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFF020617).withAlpha(165)
+                : AppColors.lightBackground.withAlpha(220),
+            border: Border(
+              left: BorderSide(
+                color: isDark
+                    ? Colors.white.withAlpha(25)
+                    : Colors.black.withAlpha(15),
+                width: 1.2,
+              ),
+            ),
+          ),
+          child: Stack(
+            children: [
+              if (isDark)
+                Positioned(
+                  top: -55,
+                  right: -55,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFFF59E0B).withAlpha(30),
+                          const Color(0xFFF59E0B).withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withAlpha(isDark ? 15 : 30),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFF59E0B).withAlpha(50),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.admin_panel_settings_rounded,
+                              color: Color(0xFFF59E0B),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "CPI Admin",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.lightPrimaryText,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Geist',
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                "Admin Options",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : AppColors.lightCaptionText,
+                                  fontSize: 11,
+                                  fontFamily: 'Geist',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20.0),
+                        child: Divider(
+                          color: isDark ? Colors.white10 : Colors.black12,
+                        ),
+                      ),
+                      _buildDrawerFrostedLinkTile(
+                        Icons.info_outline_rounded,
+                        "About Institution",
+                        isDark,
+                      ),
+                      _buildDrawerFrostedLinkTile(
+                        Icons.security_rounded,
+                        "Privacy & Policy",
+                        isDark,
+                      ),
+                      _buildDrawerFrostedLinkTile(
+                        Icons.headset_mic_rounded,
+                        "Help & Support Desk",
+                        isDark,
+                      ),
+                      const Spacer(),
+                      _InteractiveScaleButton(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.login,
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFFEF4444,
+                            ).withAlpha(isDark ? 12 : 20),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFFEF4444).withAlpha(50),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.power_settings_new_rounded,
+                                color: Color(0xFFEF4444),
+                                size: 18,
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                "Sign Out",
+                                style: TextStyle(
+                                  color: Color(0xFFEF4444),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Geist',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          "App Version 2.4.0 (2026)",
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white38
+                                : AppColors.lightSubtitleText,
+                            fontSize: 10,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerFrostedLinkTile(
+    IconData icon,
+    String title,
+    bool isDark, {
+    VoidCallback? onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: _InteractiveScaleButton(
+        onTap: onTap ?? () {},
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withAlpha(6)
+                : AppColors.lightCardBorderAlt,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(12)
+                  : AppColors.lightCardBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFFF59E0B), size: 20),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: isDark
+                        ? Colors.white.withAlpha(215)
+                        : AppColors.lightPrimaryText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Geist',
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: isDark ? Colors.white24 : AppColors.lightCaptionText,
+                size: 10,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -102,837 +559,80 @@ class _AdminDashboardState extends State<AdminDashboard>
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF020617),
-        body: Stack(
-          children: [
-            // ── 1. DYNAMIC ROLE BACKGROUND (AMBER / ORANGE DRIFT) ──────────────
-            AnimatedBuilder(
+    final isDark = AppThemeController.isDarkMode;
+    double calculatedAlpha = (90 + (_scrollOffset * 0.85)).clamp(90.0, 255.0);
+    double dynamicImageOpacity = (1.0 - (_scrollOffset / 140.0)).clamp(
+      0.0,
+      1.0,
+    );
+
+    return Scaffold(
+      backgroundColor: isDark
+          ? const Color(0xFF020617)
+          : AppColors.lightBackground,
+      endDrawer: _buildOptionsDrawer(context),
+      body: Stack(
+        children: [
+          // Background
+          Positioned.fill(
+            child: AnimatedBuilder(
               animation: _bgAnimController,
               builder: (context, child) {
                 return CustomPaint(
-                  size: Size.infinite,
                   painter: AnimatedBackgroundPainter(
                     animation: _bgAnimController,
-                    isLightMode: false,
-                    role: UserRole.admin,
+                    isLightMode: !isDark,
+                    role: role_model.UserRole.admin,
                   ),
                 );
               },
             ),
-
-            // ── 2. MAIN SCROLLABLE DASHBOARD CONTENT ────────────────────────
-            SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 20),
-
-                    // Top Metrics Overview (Student Dashboard Stagger Style)
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              20 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildMetricsGrid(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Control Operations Gateways
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              30 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildActionGrid(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Relocated Emergency Banner
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              35 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildEmergencyBannerToggle(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Target Semester Picker
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              40 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildSemesterChipsBlock(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Live System Dispatch Log
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              45 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildLiveSystemTerminal(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Department Activity Matrix
-                    AnimatedBuilder(
-                      animation: _staggerAnimation,
-                      builder: (context, child) {
-                        return Opacity(
-                          opacity: _staggerAnimation.value,
-                          child: Transform.translate(
-                            offset: Offset(
-                              0,
-                              50 * (1 - _staggerAnimation.value),
-                            ),
-                            child: _buildDepartmentSection(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── 3. EXACT STUDENT DASHBOARD GLASS NAVBAR ─────────────────────
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 24,
-              child: _buildOriginalGlassNavbar(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── HEADER (OVERFLOW SAFE) ────────────────────────────────────────────────
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFF59E0B).withAlpha(90),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
-          child: const Icon(
-            Icons.admin_panel_settings_rounded,
-            color: Color(0xFF030712),
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.user.name.toUpperCase(),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: 'Geist',
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: _isEmergencyModeActive
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFFF59E0B),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  (_isEmergencyModeActive
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFFF59E0B))
-                                      .withAlpha(
-                                        (_pulseController.value * 255).toInt(),
-                                      ),
-                              blurRadius: 8 * _pulseController.value,
-                              spreadRadius: 2 * _pulseController.value,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      _isEmergencyModeActive
-                          ? "EMERGENCY BROADCAST ACTIVE • ID: ${widget.user.displayId}"
-                          : "ADMIN NODE ONLINE • ID: ${widget.user.displayId}",
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: _isEmergencyModeActive
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFFF59E0B),
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Geist',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: () =>
-              Navigator.of(context).pushReplacementNamed(AppRoutes.login),
-          icon: const Icon(
-            Icons.power_settings_new_rounded,
-            color: Color(0xFFFFA0A0),
-            size: 18,
-          ),
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white.withAlpha(20),
-            padding: const EdgeInsets.all(10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: Colors.white.withAlpha(30)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── METRIC CARDS GRID (TOP PRIORITY) ──────────────────────────────────────
-  Widget _buildMetricsGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _buildMetricGlassCard(
-              "Total Students",
-              "2,450",
-              Icons.groups_rounded,
-              const Color(0xFF00E5FF),
-              cardWidth,
-            ),
-            _buildMetricGlassCard(
-              "Active Faculty",
-              "84",
-              Icons.badge_rounded,
-              const Color(0xFF10B981),
-              cardWidth,
-            ),
-            _buildMetricGlassCard(
-              "Pending Intake",
-              "18",
-              Icons.pending_actions_rounded,
-              const Color(0xFFF59E0B),
-              cardWidth,
-            ),
-            _buildMetricGlassCard(
-              "Live Classrooms",
-              "32",
-              Icons.meeting_room_rounded,
-              const Color(0xFF7B61FF),
-              cardWidth,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildMetricGlassCard(
-    String title,
-    String value,
-    IconData icon,
-    Color accentColor,
-    double width,
-  ) {
-    return SizedBox(
-      width: width,
-      child: _buildGlassContainer(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Positioned.fill(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
               children: [
-                Icon(icon, color: accentColor, size: 20),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: accentColor,
-                    shape: BoxShape.circle,
-                  ),
+                _buildDashboardContent(
+                  isDark,
+                  calculatedAlpha,
+                  dynamicImageOpacity,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'Geist',
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              style: TextStyle(
-                color: Colors.white.withAlpha(150),
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Geist',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── ACTION GATEWAYS GRID ──────────────────────────────────────────────────
-  Widget _buildActionGrid() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "CPI Admin Services",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Geist',
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 14),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.35,
-          children: [
-            _buildActionTile(
-              title: "Routine Override",
-              subtitle: "Class swaps & schedules",
-              icon: Icons.calendar_today_rounded,
-              color: const Color(0xFF2563EB),
-              onTap: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => const RoutineOverrideSheet(),
-              ),
-            ),
-            _buildActionTile(
-              title: "Assessments Marks",
-              subtitle: "Ingest TC/PC scores",
-              icon: Icons.assessment_rounded,
-              color: const Color(0xFF7B61FF),
-              onTap: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => const AssessmentMarksSheet(),
-              ),
-            ),
-            _buildActionTile(
-              title: "Attendance Logger",
-              subtitle: "Mass log & exemptions",
-              icon: Icons.fact_check_rounded,
-              color: const Color(0xFF16A34A),
-              onTap: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => const AttendanceLoggerSheet(),
-              ),
-            ),
-            _buildActionTile(
-              title: "Admit Clearance",
-              subtitle: "Regulate exam tokens",
-              icon: Icons.badge_rounded,
-              color: const Color(0xFFD97706),
-              onTap: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => const AdmitClearanceSheet(),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionTile({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return _InteractiveScaleButton(
-      onTap: onTap,
-      child: _buildGlassContainer(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withAlpha(50),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Geist',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withAlpha(125),
-                fontSize: 9.5,
-                fontFamily: 'Geist',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── EMERGENCY OVERRIDE BANNER ──────────────────────────────────────────────
-  Widget _buildEmergencyBannerToggle() {
-    return _buildGlassContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      borderColor: _isEmergencyModeActive
-          ? const Color(0xFFEF4444).withAlpha(150)
-          : Colors.white.withAlpha(30),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _isEmergencyModeActive
-                  ? const Color(0xFFEF4444).withAlpha(50)
-                  : const Color(0xFFF59E0B).withAlpha(40),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _isEmergencyModeActive
-                  ? Icons.warning_amber_rounded
-                  : Icons.campaign_rounded,
-              color: _isEmergencyModeActive
-                  ? const Color(0xFFEF4444)
-                  : const Color(0xFFF59E0B),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isEmergencyModeActive
-                      ? "Emergency Dispatch Active"
-                      : "Campus Live Broadcast Status",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _isEmergencyModeActive
-                      ? "Pushing alert banners to all student portals."
-                      : "System operating under normal academic schedule.",
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(140),
-                    fontSize: 10.5,
-                    fontFamily: 'Geist',
-                  ),
-                ),
+                _buildPlaceholderPage("Admin Controls", isDark),
+                _buildPlaceholderPage("Faculty Management", isDark),
+                _buildPlaceholderPage("System Settings", isDark),
               ],
             ),
           ),
-          Switch.adaptive(
-            value: _isEmergencyModeActive,
-            activeColor: const Color(0xFFEF4444),
-            onChanged: (value) {
-              if (mounted) {
-                setState(() {
-                  _isEmergencyModeActive = value;
-                });
-              }
-            },
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: _buildOriginalGlassNavbar(isDark),
           ),
         ],
       ),
     );
   }
 
-  // ── SEMESTER SELECTOR CHIPS ──────────────────────────────────────────────
-  Widget _buildSemesterChipsBlock() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Academic Target Semester",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Geist',
-            letterSpacing: 0.5,
-          ),
+  Widget _buildPlaceholderPage(String title, bool isDark) {
+    return Center(
+      child: Text(
+        title,
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.lightPrimaryText,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Geist',
         ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: List.generate(8, (index) {
-              final semIndex = index + 1;
-              final isSelected = _selectedSemester == semIndex;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () {
-                    if (mounted) {
-                      setState(() => _selectedSemester = semIndex);
-                    }
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFFF59E0B).withAlpha(50)
-                          : Colors.white.withAlpha(12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFFF59E0B)
-                            : Colors.white.withAlpha(25),
-                        width: isSelected ? 1.5 : 1.0,
-                      ),
-                    ),
-                    child: Text(
-                      "$semIndex${_getOrdinalSuffix(semIndex)} Sem",
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF59E0B)
-                            : Colors.white.withAlpha(150),
-                        fontSize: 12,
-                        fontFamily: 'Geist',
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  String _getOrdinalSuffix(int value) {
-    if (value == 1) return 'st';
-    if (value == 2) return 'nd';
-    if (value == 3) return 'rd';
-    return 'th';
-  }
-
-  // ── LIVE SYSTEM TERMINAL ──────────────────────────────────────────────────
-  Widget _buildLiveSystemTerminal() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Live System Dispatch Logs",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Geist',
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildGlassContainer(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              _TerminalLogRow(
-                time: "15:24",
-                action: "NOTICE_BROADCAST",
-                details: "Midterm Exam Routine Published for CST 6th Sem",
-                color: Color(0xFF00E5FF),
-              ),
-              SizedBox(height: 8),
-              _TerminalLogRow(
-                time: "14:10",
-                action: "ROOM_SWAP",
-                details: "Class CST-601 moved to Rm 402 for Lab Slot",
-                color: Color(0xFFF59E0B),
-              ),
-              SizedBox(height: 8),
-              _TerminalLogRow(
-                time: "12:05",
-                action: "MARKS_INGEST",
-                details: "24 Assessment Records updated by Admin",
-                color: Color(0xFF10B981),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── DEPARTMENTS MATRIX ───────────────────────────────────────────────────
-  Widget _buildDepartmentSection() {
-    final depts = [
-      _DeptData(
-        name: "Computer Science & Tech",
-        short: "CST",
-        students: 480,
-        health: 0.98,
-      ),
-      _DeptData(
-        name: "Electronics Tech",
-        short: "ET",
-        students: 310,
-        health: 0.95,
-      ),
-      _DeptData(
-        name: "Civil Tech",
-        short: "CIVIL",
-        students: 400,
-        health: 0.92,
-      ),
-      _DeptData(
-        name: "Mechanical Tech",
-        short: "MECH",
-        students: 360,
-        health: 0.94,
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Department Matrix",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Geist',
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: depts.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final dept = depts[index];
-            return _buildGlassContainer(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withAlpha(40),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFF59E0B).withAlpha(80),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        dept.short,
-                        style: const TextStyle(
-                          color: Color(0xFFF59E0B),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          fontFamily: 'Geist',
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dept.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Geist',
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Enrolled Students: ${dept.students}",
-                          style: TextStyle(
-                            color: Colors.white.withAlpha(125),
-                            fontSize: 11,
-                            fontFamily: 'Geist',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    "${(dept.health * 100).toInt()}% Active",
-                    style: const TextStyle(
-                      color: Color(0xFF10B981),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  // ── EXACT STUDENT DASHBOARD GLASS BOTTOM NAVBAR ───────────────────────────
-  Widget _buildOriginalGlassNavbar() {
+  Widget _buildOriginalGlassNavbar(bool isDark) {
     return _buildNavbarGlassContainer(
       borderRadius: 24,
+      isDark: isDark,
       child: SizedBox(
         height: 64,
         child: Stack(
@@ -952,15 +652,21 @@ class _AdminDashboardState extends State<AdminDashboard>
                     vertical: 11,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withAlpha(35),
+                    color: isDark
+                        ? const Color(0xFFF59E0B).withAlpha(35)
+                        : const Color(0xFFF59E0B).withAlpha(20),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: const Color(0xFFF59E0B).withAlpha(60),
+                      color: isDark
+                          ? const Color(0xFFF59E0B).withAlpha(60)
+                          : const Color(0xFFF59E0B).withAlpha(40),
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFF59E0B).withAlpha(15),
+                        color: isDark
+                            ? const Color(0xFFF59E0B).withAlpha(15)
+                            : const Color(0xFFF59E0B).withAlpha(10),
                         blurRadius: 12,
                         spreadRadius: 1,
                       ),
@@ -972,16 +678,30 @@ class _AdminDashboardState extends State<AdminDashboard>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildNavbarItem(Icons.grid_view_rounded, "Overview", index: 0),
-                _buildNavbarItem(Icons.tune_rounded, "Controls", index: 1),
+                _buildNavbarItem(
+                  Icons.grid_view_rounded,
+                  "Dashboard",
+                  index: 0,
+                  isDark: isDark,
+                ),
+                _buildNavbarItem(
+                  Icons.tune_rounded,
+                  "Controls",
+                  index: 1,
+                  isDark: isDark,
+                ),
                 _buildNavbarItem(
                   Icons.supervisor_account_rounded,
                   "Faculty",
                   index: 2,
-                  onTapOverride: () =>
-                      _showQuickActionSnackBar("Faculty Directory"),
+                  isDark: isDark,
                 ),
-                _buildNavbarItem(Icons.settings_outlined, "Settings", index: 3),
+                _buildNavbarItem(
+                  Icons.settings_outlined,
+                  "Settings",
+                  index: 3,
+                  isDark: isDark,
+                ),
               ],
             ),
           ],
@@ -993,6 +713,7 @@ class _AdminDashboardState extends State<AdminDashboard>
   Widget _buildNavbarGlassContainer({
     required double borderRadius,
     required Widget child,
+    required bool isDark,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
@@ -1000,14 +721,35 @@ class _AdminDashboardState extends State<AdminDashboard>
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: isDark
+                ? Colors.transparent
+                : AppColors.lightBackground.withAlpha(235),
             borderRadius: BorderRadius.circular(borderRadius),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.white.withAlpha(16), Colors.white.withAlpha(4)],
+            gradient: isDark
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withAlpha(16),
+                      Colors.white.withAlpha(4),
+                    ],
+                  )
+                : null,
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withAlpha(30)
+                  : AppColors.lightCardBorder,
+              width: 1.0,
             ),
-            border: Border.all(color: Colors.white.withAlpha(30), width: 1.0),
           ),
           child: child,
         ),
@@ -1019,22 +761,25 @@ class _AdminDashboardState extends State<AdminDashboard>
     IconData icon,
     String label, {
     required int index,
-    VoidCallback? onTapOverride,
+    required bool isDark,
   }) {
     final active = _selectedNavIndex == index;
-    final activeColor = active ? const Color(0xFFF59E0B) : Colors.white38;
+    final activeColor = active
+        ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706))
+        : (isDark ? Colors.white38 : AppColors.lightSubtitleText);
 
     return Expanded(
       child: InkWell(
         onTap: () {
-          if (onTapOverride != null) {
-            onTapOverride();
-          } else {
-            if (mounted) {
-              setState(() {
-                _selectedNavIndex = index;
-              });
-            }
+          if (mounted) {
+            setState(() {
+              _selectedNavIndex = index;
+            });
+          }
+          _pageController.jumpToPage(index);
+
+          if (index == 0) {
+            _triggerDashboardReentrySequence();
           }
         },
         highlightColor: Colors.transparent,
@@ -1080,31 +825,1189 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  // ── REUSABLE GLASS CONTAINER ──────────────────────────────────────────────
-  Widget _buildGlassContainer({
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-    Color? borderColor,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(8),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: borderColor ?? Colors.white.withAlpha(12),
-              width: 1,
+  Widget _buildDashboardContent(
+    bool isDark,
+    double calculatedAlpha,
+    double dynamicImageOpacity,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          // Background Image
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Opacity(
+              opacity: dynamicImageOpacity,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 1000),
+                      child: Image.asset(
+                        _bgAssets[_currentBgIndex],
+                        key: ValueKey<int>(_currentBgIndex),
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => Container(
+                          color: isDark
+                              ? AppColors.lightPrimaryText
+                              : AppColors.lightCardBorder,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 50),
+                        color: isDark
+                            ? Colors.black.withAlpha(calculatedAlpha.toInt())
+                            : Colors.white.withAlpha(
+                                (calculatedAlpha.toInt() - 20).clamp(0, 255),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          child: child,
+          if (isDark) ...[
+            Positioned(
+              top: 240,
+              left: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFF59E0B).withAlpha(35),
+                      const Color(0xFFF59E0B).withAlpha(0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 450,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFD97706).withAlpha(25),
+                      const Color(0xFFD97706).withAlpha(0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          Positioned.fill(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20.0, 52.0, 20.0, 36.0),
+                    child: SizedBox(
+                      height: 56,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Builder(
+                                  builder: (context) {
+                                    return InkWell(
+                                      onTap: () {
+                                        Scaffold.of(context).openEndDrawer();
+                                      },
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: Container(
+                                        width: 46,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white.withAlpha(20)
+                                              : Colors.black.withAlpha(15),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isDark
+                                                ? Colors.white.withAlpha(40)
+                                                : Colors.black.withAlpha(20),
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.admin_panel_settings_rounded,
+                                          color: Color(0xFFF59E0B),
+                                          size: 20,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        widget.user.name.toUpperCase(),
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white
+                                              : AppColors.lightPrimaryText,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          fontFamily: 'Geist',
+                                          letterSpacing: 0.3,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          AnimatedBuilder(
+                                            animation: _pulseController,
+                                            builder: (context, child) {
+                                              return Container(
+                                                width: 7,
+                                                height: 7,
+                                                decoration: BoxDecoration(
+                                                  color: _isEmergencyModeActive
+                                                      ? const Color(0xFFEF4444)
+                                                      : const Color(0xFFF59E0B),
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color:
+                                                          (_isEmergencyModeActive
+                                                                  ? const Color(
+                                                                      0xFFEF4444,
+                                                                    )
+                                                                  : const Color(
+                                                                      0xFFF59E0B,
+                                                                    ))
+                                                              .withAlpha(
+                                                                (_pulseController
+                                                                            .value *
+                                                                        255)
+                                                                    .toInt(),
+                                                              ),
+                                                      blurRadius:
+                                                          8 *
+                                                          _pulseController
+                                                              .value,
+                                                      spreadRadius:
+                                                          2 *
+                                                          _pulseController
+                                                              .value,
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              _isEmergencyModeActive
+                                                  ? "EMERGENCY MODE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}"
+                                                  : "ADMIN ONLINE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}",
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                color: _isEmergencyModeActive
+                                                    ? const Color(0xFFEF4444)
+                                                    : const Color(0xFFF59E0B),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              // Theme Toggle
+                              const ThemeToggleSwitch(),
+                              const SizedBox(width: 8),
+
+                              // Search Button
+                              IconButton(
+                                onPressed: () => _openAdminSearchPage(context),
+                                icon: const Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFFF59E0B),
+                                  size: 18,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: isDark
+                                      ? Colors.white.withAlpha(12)
+                                      : Colors.black.withAlpha(8),
+                                  padding: const EdgeInsets.all(8),
+                                  minimumSize: const Size(36, 36),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+
+                              // Power Off / Logout
+                              IconButton(
+                                onPressed: () => Navigator.pushReplacementNamed(
+                                  context,
+                                  AppRoutes.login,
+                                ),
+                                icon: const Icon(
+                                  Icons.power_settings_new_rounded,
+                                  color: Color(0xFFFFA0A0),
+                                  size: 16,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: isDark
+                                      ? Colors.white.withAlpha(12)
+                                      : Colors.black.withAlpha(8),
+                                  padding: const EdgeInsets.all(8),
+                                  minimumSize: const Size(36, 36),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Main Content
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(
+                          20.0,
+                          24.0,
+                          20.0,
+                          160.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withAlpha(6)
+                              : AppColors.lightBackground.withAlpha(180),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                          border: Border(
+                            top: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withAlpha(25)
+                                  : AppColors.lightCardBorder,
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Metrics Grid
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      20 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: _buildMetricsGrid(isDark),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Admin Services
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      30 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 4.0,
+                                          ),
+                                          child: Text(
+                                            "Admin Services",
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppColors.lightPrimaryText,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'Geist',
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 14),
+                                        GridView.count(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          crossAxisCount: 2,
+                                          crossAxisSpacing: 12,
+                                          mainAxisSpacing: 12,
+                                          childAspectRatio: 1.35,
+                                          children: [
+                                            _buildActionTile(
+                                              "Routine Override",
+                                              Icons.calendar_today_rounded,
+                                              const Color(0xFF2563EB),
+                                              () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  isScrollControlled: true,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  builder: (context) =>
+                                                      const RoutineOverrideSheet(),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
+                                            _buildActionTile(
+                                              "Assessment Marks",
+                                              Icons.assessment_rounded,
+                                              const Color(0xFF7B61FF),
+                                              () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  isScrollControlled: true,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  builder: (context) =>
+                                                      const AssessmentMarksSheet(),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
+                                            _buildActionTile(
+                                              "Attendance Logger",
+                                              Icons.fact_check_rounded,
+                                              const Color(0xFF16A34A),
+                                              () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  isScrollControlled: true,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  builder: (context) =>
+                                                      const AttendanceLoggerSheet(),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
+                                            _buildActionTile(
+                                              "Admit Clearance",
+                                              Icons.badge_rounded,
+                                              const Color(0xFFD97706),
+                                              () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  isScrollControlled: true,
+                                                  backgroundColor:
+                                                      Colors.transparent,
+                                                  builder: (context) =>
+                                                      const AdmitClearanceSheet(),
+                                                );
+                                              },
+                                              isDark,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Emergency Banner
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      35 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: _buildEmergencyBannerToggle(isDark),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Semester Selector
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      40 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: _buildSemesterChipsBlock(isDark),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Live System Logs
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      45 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: _buildLiveSystemTerminal(isDark),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Department Matrix
+                            AnimatedBuilder(
+                              animation: _staggerAnimation,
+                              builder: (context, child) {
+                                return Opacity(
+                                  opacity: _staggerAnimation.value,
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      50 * (1 - _staggerAnimation.value),
+                                    ),
+                                    child: _buildDepartmentSection(isDark),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== BUILD METHODS ====================
+
+  Widget _buildMetricsGrid(bool isDark) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - 12) / 2;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _buildMetricGlassCard(
+              "Total Students",
+              "2,450",
+              Icons.groups_rounded,
+              const Color(0xFF00E5FF),
+              cardWidth,
+              isDark,
+            ),
+            _buildMetricGlassCard(
+              "Active Faculty",
+              "84",
+              Icons.badge_rounded,
+              const Color(0xFF10B981),
+              cardWidth,
+              isDark,
+            ),
+            _buildMetricGlassCard(
+              "Pending Intake",
+              "18",
+              Icons.pending_actions_rounded,
+              const Color(0xFFF59E0B),
+              cardWidth,
+              isDark,
+            ),
+            _buildMetricGlassCard(
+              "Live Classrooms",
+              "32",
+              Icons.meeting_room_rounded,
+              const Color(0xFF7B61FF),
+              cardWidth,
+              isDark,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricGlassCard(
+    String title,
+    String value,
+    IconData icon,
+    Color accentColor,
+    double width,
+    bool isDark,
+  ) {
+    return SizedBox(
+      width: width,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withAlpha(8)
+                  : Colors.white.withAlpha(200),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withAlpha(12)
+                    : AppColors.lightCardBorder,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(icon, color: accentColor, size: 20),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Geist',
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isDark
+                        ? Colors.white.withAlpha(150)
+                        : Colors.black54,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Geist',
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildActionTile(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+    bool isDark,
+  ) {
+    return _InteractiveScaleButton(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withAlpha(12)
+                : AppColors.lightCardBorder,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(isDark ? 20 : 30),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white.withAlpha(215)
+                      : AppColors.lightPrimaryText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Geist',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyBannerToggle(bool isDark) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withAlpha(8)
+                : Colors.white.withAlpha(200),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isEmergencyModeActive
+                  ? const Color(0xFFEF4444).withAlpha(150)
+                  : (isDark
+                        ? Colors.white.withAlpha(30)
+                        : AppColors.lightCardBorder),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _isEmergencyModeActive
+                      ? const Color(0xFFEF4444).withAlpha(50)
+                      : const Color(0xFFF59E0B).withAlpha(40),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _isEmergencyModeActive
+                      ? Icons.warning_amber_rounded
+                      : Icons.campaign_rounded,
+                  color: _isEmergencyModeActive
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFF59E0B),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isEmergencyModeActive
+                          ? "Emergency Dispatch Active"
+                          : "Campus Live Broadcast Status",
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Geist',
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isEmergencyModeActive
+                          ? "Pushing alert banners to all student portals."
+                          : "System operating under normal academic schedule.",
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withAlpha(140)
+                            : Colors.black54,
+                        fontSize: 10.5,
+                        fontFamily: 'Geist',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: _isEmergencyModeActive,
+                activeColor: const Color(0xFFEF4444),
+                onChanged: (value) {
+                  if (mounted) {
+                    setState(() {
+                      _isEmergencyModeActive = value;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSemesterChipsBlock(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0),
+          child: Text(
+            "Academic Target Semester",
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.lightPrimaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Geist',
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: List.generate(8, (index) {
+              final semIndex = index + 1;
+              final isSelected = _selectedSemester == semIndex;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    if (mounted) {
+                      setState(() => _selectedSemester = semIndex);
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFF59E0B).withAlpha(50)
+                          : (isDark
+                                ? Colors.white.withAlpha(12)
+                                : Colors.black.withAlpha(8)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFF59E0B)
+                            : (isDark
+                                  ? Colors.white.withAlpha(25)
+                                  : Colors.black.withAlpha(15)),
+                        width: isSelected ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Text(
+                      "$semIndex${_getOrdinalSuffix(semIndex)} Sem",
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFFF59E0B)
+                            : (isDark
+                                  ? Colors.white.withAlpha(150)
+                                  : Colors.black54),
+                        fontSize: 12,
+                        fontFamily: 'Geist',
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getOrdinalSuffix(int value) {
+    if (value == 1) return 'st';
+    if (value == 2) return 'nd';
+    if (value == 3) return 'rd';
+    return 'th';
+  }
+
+  Widget _buildLiveSystemTerminal(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0),
+          child: Text(
+            "Live System Dispatch Logs",
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.lightPrimaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Geist',
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withAlpha(8)
+                    : Colors.white.withAlpha(200),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withAlpha(12)
+                      : AppColors.lightCardBorder,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  _TerminalLogRow(
+                    time: "15:24",
+                    action: "NOTICE_BROADCAST",
+                    details: "Midterm Exam Routine Published for CST 6th Sem",
+                    color: Color(0xFF00E5FF),
+                  ),
+                  SizedBox(height: 8),
+                  _TerminalLogRow(
+                    time: "14:10",
+                    action: "ROOM_SWAP",
+                    details: "Class CST-601 moved to Rm 402 for Lab Slot",
+                    color: Color(0xFFF59E0B),
+                  ),
+                  SizedBox(height: 8),
+                  _TerminalLogRow(
+                    time: "12:05",
+                    action: "MARKS_INGEST",
+                    details: "24 Assessment Records updated by Admin",
+                    color: Color(0xFF10B981),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDepartmentSection(bool isDark) {
+    final depts = [
+      _DeptData(
+        name: "Computer Science & Tech",
+        short: "CST",
+        students: 480,
+        health: 0.98,
+      ),
+      _DeptData(
+        name: "Electronics Tech",
+        short: "ET",
+        students: 310,
+        health: 0.95,
+      ),
+      _DeptData(
+        name: "Civil Tech",
+        short: "CIVIL",
+        students: 400,
+        health: 0.92,
+      ),
+      _DeptData(
+        name: "Mechanical Tech",
+        short: "MECH",
+        students: 360,
+        health: 0.94,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4.0),
+          child: Text(
+            "Department Matrix",
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.lightPrimaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Geist',
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: depts.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final dept = depts[index];
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withAlpha(8)
+                        : Colors.white.withAlpha(200),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withAlpha(12)
+                          : AppColors.lightCardBorder,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withAlpha(40),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B).withAlpha(80),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            dept.short,
+                            style: const TextStyle(
+                              color: Color(0xFFF59E0B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              fontFamily: 'Geist',
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dept.name,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.lightPrimaryText,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Geist',
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Enrolled Students: ${dept.students}",
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white.withAlpha(125)
+                                    : Colors.black54,
+                                fontSize: 11,
+                                fontFamily: 'Geist',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        "${(dept.health * 100).toInt()}% Active",
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          fontFamily: 'Geist',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+// ── TERMINAL LOG ROW WIDGET ────────────────────────────────────────────────
+class _TerminalLogRow extends StatelessWidget {
+  final String time;
+  final String action;
+  final String details;
+  final Color color;
+
+  const _TerminalLogRow({
+    required this.time,
+    required this.action,
+    required this.details,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "[$time]",
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 10,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+          decoration: BoxDecoration(
+            color: color.withAlpha(40),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            action,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            details,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 10.5,
+              fontFamily: 'Geist',
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── DEPT DATA CLASS ─────────────────────────────────────────────────────────
+class _DeptData {
+  final String name;
+  final String short;
+  final int students;
+  final double health;
+
+  _DeptData({
+    required this.name,
+    required this.short,
+    required this.students,
+    required this.health,
+  });
 }
 
 // ── INTERACTIVE SCALE BUTTON WIDGET ───────────────────────────────────────
@@ -1155,81 +2058,4 @@ class _InteractiveScaleButtonState extends State<_InteractiveScaleButton>
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
-}
-
-// ── TERMINAL LOG ROW WIDGET ────────────────────────────────────────────────
-class _TerminalLogRow extends StatelessWidget {
-  final String time;
-  final String action;
-  final String details;
-  final Color color;
-
-  const _TerminalLogRow({
-    required this.time,
-    required this.action,
-    required this.details,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "[$time]",
-          style: TextStyle(
-            color: Colors.white.withAlpha(100),
-            fontSize: 10,
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          decoration: BoxDecoration(
-            color: color.withAlpha(40),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            action,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            details,
-            style: TextStyle(
-              color: Colors.white.withAlpha(200),
-              fontSize: 10.5,
-              fontFamily: 'Geist',
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DeptData {
-  final String name;
-  final String short;
-  final int students;
-  final double health;
-
-  _DeptData({
-    required this.name,
-    required this.short,
-    required this.students,
-    required this.health,
-  });
 }

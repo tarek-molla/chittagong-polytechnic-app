@@ -1,4 +1,7 @@
+// =============================================================================
 // lib/services/attendance_service.dart
+// CPI Faculty Portal — Attendance Data Service
+// =============================================================================
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -49,10 +52,10 @@ class DailyAttendanceEntry {
       status: json['status'] ?? 'Absent',
       remarks: json['remarks'],
       teacherName: json['teacher_name'] ?? '',
-      createdAt: json['created_at'] != null 
+      createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
+      updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : DateTime.now(),
     );
@@ -115,11 +118,7 @@ class Student {
   final String name;
   final String? email;
 
-  Student({
-    required this.roll,
-    required this.name,
-    this.email,
-  });
+  Student({required this.roll, required this.name, this.email});
 
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
@@ -147,15 +146,11 @@ class AttendanceService {
           .order('roll', ascending: true);
 
       if (response.isEmpty) {
-        // Return sample students if no students found
         return _getSampleStudents();
       }
 
-      return (response as List)
-          .map((json) => Student.fromJson(json))
-          .toList();
+      return (response as List).map((json) => Student.fromJson(json)).toList();
     } catch (e) {
-      print('❌ Error fetching students: $e');
       return _getSampleStudents();
     }
   }
@@ -195,7 +190,6 @@ class AttendanceService {
           .map((json) => DailyAttendanceEntry.fromJson(json))
           .toList();
     } catch (e) {
-      print('❌ Error fetching daily attendance: $e');
       return [];
     }
   }
@@ -211,21 +205,23 @@ class AttendanceService {
     String teacherName,
   ) async {
     try {
-      // First, get existing attendance
-      final existing = await getDailyAttendance(className, semester, subjectCode, date);
-      
+      final existing = await getDailyAttendance(
+        className,
+        semester,
+        subjectCode,
+        date,
+      );
+
       if (existing.isNotEmpty) {
         return existing;
       }
 
-      // Get students for this class
       final students = await getStudents(className, semester);
-      
+
       if (students.isEmpty) {
         return [];
       }
 
-      // Create default entries for all students
       final entries = students.map((student) {
         return {
           'student_roll': student.roll,
@@ -252,7 +248,6 @@ class AttendanceService {
           .map((json) => DailyAttendanceEntry.fromJson(json))
           .toList();
     } catch (e) {
-      print('❌ Error creating daily attendance: $e');
       return [];
     }
   }
@@ -284,7 +279,6 @@ class AttendanceService {
       }
       return null;
     } catch (e) {
-      print('❌ Error updating daily attendance: $e');
       return null;
     }
   }
@@ -299,20 +293,23 @@ class AttendanceService {
     String date,
     String teacherName,
   ) async* {
-    // Initial fetch
     yield await getOrCreateDailyAttendance(
-      className, 
-      semester, 
-      subjectCode, 
-      subjectName, 
-      department, 
-      date, 
-      teacherName
+      className,
+      semester,
+      subjectCode,
+      subjectName,
+      department,
+      date,
+      teacherName,
     );
 
-    // Listen for changes using periodic refresh
     await for (final _ in Stream.periodic(const Duration(seconds: 5))) {
-      final updated = await getDailyAttendance(className, semester, subjectCode, date);
+      final updated = await getDailyAttendance(
+        className,
+        semester,
+        subjectCode,
+        date,
+      );
       if (updated.isNotEmpty) {
         yield updated;
       }
@@ -358,7 +355,6 @@ class AttendanceService {
         'attendanceRate': attendanceRate,
       };
     } catch (e) {
-      print('❌ Error fetching daily attendance stats: $e');
       return {
         'totalStudents': 0,
         'presentCount': 0,

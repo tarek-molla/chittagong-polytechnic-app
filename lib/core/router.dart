@@ -19,6 +19,12 @@ import '../views/teacher/marks_uploader_view.dart';
 import '../views/admin/admin_dashboard.dart';
 import '../views/admin/admission_triage_view.dart';
 import '../views/admin/routine_scheduler_view.dart';
+import '../views/teacher/continuous_assessment_view.dart';
+import '../views/teacher/teacher_syllabus_view.dart';
+import '../views/teacher/teacher_notice_view.dart';
+import '../views/teacher/about_institution_view.dart';
+import '../views/teacher/profile_view.dart';
+import '../views/teacher/privacy_policy_view.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -38,6 +44,13 @@ class AppRoutes {
   static const String adminDashboard = '/admin/dashboard';
   static const String admissionTriage = '/admin/admissions';
   static const String routineScheduler = '/admin/routine';
+  static const String continuousAssessment = '/teacher/continuous-assessment';
+  static const String teacherSyllabus = '/teacher/syllabus';
+  static const String teacherNotice = '/teacher/notice';
+  static const String teacherAboutInstitution = '/teacher/about-institution';
+  static const String teacherProfile = '/teacher/profile';
+  static const String aboutInstitution = '/student/about-institution';
+  static const String teacherPrivacyPolicy = '/teacher/privacy-policy';
 }
 
 class StudentRouteArgs {
@@ -84,6 +97,24 @@ class MarksUploaderArgs {
     required this.subjectCode,
     required this.subjectName,
     required this.semester,
+  });
+}
+
+class ContinuousAssessmentArgs {
+  final AppUser teacher;
+  final String className;
+  final String subjectCode;
+  final String subjectName;
+  final int semester;
+  final String department;
+
+  const ContinuousAssessmentArgs({
+    required this.teacher,
+    required this.className,
+    required this.subjectCode,
+    required this.subjectName,
+    required this.semester,
+    required this.department,
   });
 }
 
@@ -177,11 +208,67 @@ class AppRouter {
           ),
         );
 
+      case AppRoutes.continuousAssessment:
+        final args = _requireArgs<ContinuousAssessmentArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => ContinuousAssessmentView(
+            teacher: args.teacher,
+            className: args.className,
+            subjectCode: args.subjectCode,
+            subjectName: args.subjectName,
+            semester: args.semester,
+            department: args.department,
+          ),
+        );
+
+      case AppRoutes.teacherSyllabus:
+        final args = _requireArgs<TeacherRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => TeacherSyllabusView(teacher: args.user),
+        );
+
+      case AppRoutes.teacherNotice:
+        final args = _requireArgs<TeacherRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => TeacherNoticeView(teacher: args.user),
+        );
+
       case AppRoutes.adminDashboard:
         final args = _requireArgs<AdminRouteArgs>(settings);
         return _slideRoute(
           settings: settings,
           builder: (_) => AdminDashboard(user: args.user),
+        );
+
+      case AppRoutes.teacherAboutInstitution:
+        final args = _requireArgs<TeacherRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => AboutInstitutionView(user: args.user),
+        );
+
+      case AppRoutes.teacherProfile:
+        final args = _requireArgs<TeacherRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => ProfileView(user: args.user),
+        );
+
+      case AppRoutes.teacherPrivacyPolicy:
+        final args = _requireArgs<TeacherRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => PrivacyPolicyView(user: args.user),
+        );
+
+      case AppRoutes.aboutInstitution:
+        final args = _requireArgs<StudentRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => AboutInstitutionView(user: args.user),
         );
 
       case AppRoutes.admissionTriage:

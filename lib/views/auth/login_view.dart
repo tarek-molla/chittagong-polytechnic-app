@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/user.dart';
+import '../../models/user_role.dart';
+import '../../models/department.dart';
 import '../../core/router.dart';
 import '../../services/supabase_service.dart';
 
@@ -241,7 +243,6 @@ class _LoginViewState extends State<LoginView>
       department: department,
       rollNumber: rollNumber,
       semester: studentData['semester'] as int? ?? 4,
-      joinedAt: DateTime.now(),
     );
   }
 
@@ -268,8 +269,7 @@ class _LoginViewState extends State<LoginView>
       email: teacherData['email']?.toString() ?? '',
       role: UserRole.teacher,
       department: department,
-      employeeId: employeeId,
-      joinedAt: DateTime.now(),
+      teacherId: employeeId,
     );
   }
 
@@ -279,8 +279,7 @@ class _LoginViewState extends State<LoginView>
       name: adminData['full_name']?.toString() ?? 'Admin',
       email: adminData['email']?.toString() ?? '',
       role: UserRole.admin,
-      employeeId: adminId, // Using employeeId field for adminId
-      joinedAt: DateTime.now(),
+      teacherId: adminId,
     );
   }
 
