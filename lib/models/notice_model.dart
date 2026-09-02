@@ -88,6 +88,7 @@ class NoticeModel {
   final String priority;
   final bool isActive;
   final DateTime? updatedAt;
+  final String postedByRole;
 
   NoticeModel({
     required this.id,
@@ -107,6 +108,7 @@ class NoticeModel {
     this.priority = 'normal',
     this.isActive = true,
     this.updatedAt,
+    this.postedByRole = 'teacher',
   });
 
   factory NoticeModel.fromJson(Map<String, dynamic> json) {
@@ -143,6 +145,7 @@ class NoticeModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString())
           : null,
+      postedByRole: json['posted_by_role']?.toString() ?? 'teacher',
     );
   }
 
@@ -163,10 +166,34 @@ class NoticeModel {
       'priority': priority,
       'is_active': isActive,
       'updated_at': DateTime.now().toIso8601String(),
+      'posted_by_role': postedByRole,
     };
   }
 
   // Getters for UI
+  Color get categoryColor {
+    switch (category.toUpperCase()) {
+      case 'ACADEMIC':
+        return const Color(0xFF10B981); // Green
+      case 'CLASS':
+        return const Color(0xFF3B82F6); // Blue
+      case 'SUGGESTION':
+        return const Color(0xFF8B5CF6); // Purple
+      case 'GENERAL':
+        return const Color(0xFF6B7280); // Gray
+      case 'ADMINISTRATIVE':
+        return const Color(0xFFF59E0B); // Orange
+      case 'EMERGENCY':
+        return const Color(0xFFEF4444); // Red
+      case 'EXAMINATION':
+        return const Color(0xFFEC4899); // Pink
+      case 'EVENT':
+        return const Color(0xFF06B6D4); // Cyan
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
   Color get priorityColor {
     switch (priority.toLowerCase()) {
       case 'urgent':

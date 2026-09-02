@@ -245,31 +245,44 @@ class TeacherSearchDelegate extends SearchDelegate<String> {
         );
         break;
       case 'attendance':
+        if (user!.department == null) {
+          // Redirect to a placeholder for subject selection if missing
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Subject/Class info missing')),
+          );
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => AttendanceManagementView(
               teacher: user!,
-              className: 'CMT-4th-B2',
-              subjectCode: '66641',
-              subjectName: 'Data Structures',
-              semester: 4,
-              department: 'CST',
+              className: 'Not Assigned',
+              subjectCode: 'N/A',
+              subjectName: 'Unknown Subject',
+              semester: 1,
+              department: user!.department?.shortCode ?? 'CST',
             ),
           ),
         );
         break;
       case 'assessment':
+        if (user!.department == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Subject/Class info missing')),
+          );
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ContinuousAssessmentView(
               teacher: user!,
-              className: 'CMT-4th-B2',
-              subjectCode: '66641',
-              subjectName: 'Data Structures',
-              semester: 4,
-              department: 'CST',
+              className: 'Not Assigned',
+              subjectCode: 'N/A',
+              subjectName: 'Unknown Subject',
+              semester: 1,
+              department: user!.department?.shortCode ?? 'CST',
             ),
           ),
         );

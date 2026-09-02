@@ -105,7 +105,7 @@ class _AttendanceManagementViewState extends State<AttendanceManagementView>
         .listen(
           (entries) {
             if (!mounted) return;
-            // PREVENT STREAM FROM OVERWRITING UNSAVED LOCAL USER EDITS
+            // ✅ PREVENT STREAM FROM OVERWRITING UNSAVED LOCAL USER EDITS
             if (_hasChanges) return;
 
             setState(() {
@@ -432,256 +432,203 @@ class _AttendanceManagementViewState extends State<AttendanceManagementView>
     final isDark = AppThemeController.isDarkMode;
     final totalStudents = _attendanceEntries.length;
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF020617)
-          : AppColors.lightBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Custom Clean Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      if (_hasChanges) {
-                        _showDiscardChangesDialog();
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.className,
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white
-                                : AppColors.lightPrimaryText,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Geist',
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '${widget.subjectCode} • ${widget.subjectName}',
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white54
-                                : AppColors.lightSubtitleText,
-                            fontSize: 11,
-                            fontFamily: 'Geist',
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _pickDate,
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withAlpha(20),
-                        borderRadius: BorderRadius.circular(10),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_hasChanges) {
+          return await _showDiscardChangesDialog();
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: isDark
+            ? const Color(0xFF020617)
+            : AppColors.lightBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Custom Clean Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.lightPrimaryText,
+                        size: 20,
                       ),
-                      child: const Icon(
-                        Icons.calendar_month_rounded,
-                        color: Color(0xFF10B981),
-                        size: 18,
-                      ),
+                      onPressed: () {
+                        if (_hasChanges) {
+                          _showDiscardChangesDialog();
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Action Sub-Header with Unsaved Indicator & Save Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _hasChanges
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withAlpha(25),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.amber.withAlpha(60),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                color: Colors.amber,
-                                size: 12,
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                'Unsaved Edits',
-                                style: TextStyle(
-                                  color: Colors.amber,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Geist',
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withAlpha(20),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _selectedDate,
-                            style: const TextStyle(
-                              color: Color(0xFF10B981),
-                              fontSize: 11,
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.className,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white
+                                  : AppColors.lightPrimaryText,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'Geist',
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                  ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _confirmAttendance,
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+                          Text(
+                            '${widget.subjectCode} • ${widget.subjectName}',
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppColors.lightSubtitleText,
+                              fontSize: 11,
+                              fontFamily: 'Geist',
                             ),
-                          )
-                        : const Icon(Icons.task_alt_rounded, size: 16),
-                    label: Text(_isSaving ? 'Saving...' : 'Confirm & Save'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _hasChanges
-                          ? const Color(0xFF10B981)
-                          : (isDark
-                                ? Colors.white12
-                                : AppColors.lightCardBorderAlt),
-                      foregroundColor: _hasChanges
-                          ? Colors.white
-                          : (isDark
-                                ? Colors.white38
-                                : AppColors.lightSubtitleText),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Live Stats Banner Card
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withAlpha(6)
-                    : AppColors.lightCardBorderAlt,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withAlpha(12)
-                      : AppColors.lightCardBorder,
+                    IconButton(
+                      onPressed: _pickDate,
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: Color(0xFF10B981),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem(
-                    'Total',
-                    totalStudents.toString(),
-                    isDark,
-                    const Color(0xFF8B5CF6),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildStatItem(
-                    'Present',
-                    _presentCount.toString(),
-                    isDark,
-                    const Color(0xFF10B981),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildStatItem(
-                    'Absent',
-                    _absentCount.toString(),
-                    isDark,
-                    const Color(0xFFEF4444),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
-                  _buildStatItem(
-                    'Rate',
-                    totalStudents > 0
-                        ? '${((_presentCount / totalStudents) * 100).toInt()}%'
-                        : '0%',
-                    isDark,
-                    const Color(0xFF3B82F6),
-                  ),
-                ],
-              ),
-            ),
 
-            // Search Input Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+              // Action Sub-Header with Unsaved Indicator & Save Button
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _hasChanges
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withAlpha(25),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.amber.withAlpha(60),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: Colors.amber,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Unsaved Edits',
+                                  style: TextStyle(
+                                    color: Colors.amber,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withAlpha(20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _selectedDate,
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Geist',
+                              ),
+                            ),
+                          ),
+                    ElevatedButton.icon(
+                      onPressed: _isSaving ? null : _confirmAttendance,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.task_alt_rounded, size: 16),
+                      label: Text(_isSaving ? 'Saving...' : 'Confirm & Save'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _hasChanges
+                            ? const Color(0xFF10B981)
+                            : (isDark
+                                  ? Colors.white12
+                                  : AppColors.lightCardBorderAlt),
+                        foregroundColor: _hasChanges
+                            ? Colors.white
+                            : (isDark
+                                  ? Colors.white38
+                                  : AppColors.lightSubtitleText),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Live Stats Banner Card
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withAlpha(8)
-                      : AppColors.lightBackground,
-                  borderRadius: BorderRadius.circular(12),
+                      ? Colors.white.withAlpha(6)
+                      : AppColors.lightCardBorderAlt,
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark
                         ? Colors.white.withAlpha(12)
@@ -689,155 +636,224 @@ class _AttendanceManagementViewState extends State<AttendanceManagementView>
                   ),
                 ),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Icon(
-                      Icons.search_rounded,
-                      color: isDark
-                          ? Colors.white38
-                          : AppColors.lightCaptionText,
-                      size: 18,
+                    _buildStatItem(
+                      'Total',
+                      totalStudents.toString(),
+                      isDark,
+                      const Color(0xFF8B5CF6),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                            _filterEntries();
-                          });
-                        },
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white
-                              : AppColors.lightPrimaryText,
-                          fontSize: 13,
-                          fontFamily: 'Geist',
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search student by name or roll...',
-                          hintStyle: TextStyle(
-                            color: isDark
-                                ? Colors.white38
-                                : AppColors.lightCaptionText,
-                            fontSize: 12,
-                            fontFamily: 'Geist',
-                          ),
-                          border: InputBorder.none,
-                        ),
-                      ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: isDark ? Colors.white12 : Colors.black12,
                     ),
-                    if (_searchQuery.isNotEmpty)
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _searchQuery = '';
-                            _filterEntries();
-                          });
-                        },
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: isDark
-                              ? Colors.white38
-                              : AppColors.lightCaptionText,
-                          size: 16,
-                        ),
-                      ),
+                    _buildStatItem(
+                      'Present',
+                      _presentCount.toString(),
+                      isDark,
+                      const Color(0xFF10B981),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                    _buildStatItem(
+                      'Absent',
+                      _absentCount.toString(),
+                      isDark,
+                      const Color(0xFFEF4444),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                    _buildStatItem(
+                      'Rate',
+                      totalStudents > 0
+                          ? '${((_presentCount / totalStudents) * 100).toInt()}%'
+                          : '0%',
+                      isDark,
+                      const Color(0xFF3B82F6),
+                    ),
                   ],
                 ),
               ),
-            ),
 
-            // Student List View
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF10B981),
-                        ),
+              // Search Input Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withAlpha(8)
+                        : AppColors.lightBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withAlpha(12)
+                          : AppColors.lightCardBorder,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search_rounded,
+                        color: isDark
+                            ? Colors.white38
+                            : AppColors.lightCaptionText,
+                        size: 18,
                       ),
-                    )
-                  : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline_rounded,
-                            size: 44,
-                            color: Colors.red.withAlpha(120),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                              _filterEntries();
+                            });
+                          },
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.lightPrimaryText,
+                            fontSize: 13,
+                            fontFamily: 'Geist',
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white54
-                                  : AppColors.lightCaptionText,
-                              fontSize: 13,
-                              fontFamily: 'Geist',
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _listenToAttendance,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _filteredEntries.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.people_outline_rounded,
-                            size: 44,
-                            color: isDark ? Colors.white24 : Colors.black26,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _searchQuery.isEmpty
-                                ? 'No students found'
-                                : 'No results for "$_searchQuery"',
-                            style: TextStyle(
+                          decoration: InputDecoration(
+                            hintText: 'Search student by name or roll...',
+                            hintStyle: TextStyle(
                               color: isDark
                                   ? Colors.white38
-                                  : AppColors.lightSubtitleText,
-                              fontSize: 13,
+                                  : AppColors.lightCaptionText,
+                              fontSize: 12,
                               fontFamily: 'Geist',
                             ),
+                            border: InputBorder.none,
                           ),
-                        ],
+                        ),
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                      if (_searchQuery.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _searchQuery = '';
+                              _filterEntries();
+                            });
+                          },
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: isDark
+                                ? Colors.white38
+                                : AppColors.lightCaptionText,
+                            size: 16,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Student List View
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF10B981),
+                          ),
+                        ),
+                      )
+                    : _errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 44,
+                              color: Colors.red.withAlpha(120),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppColors.lightCaptionText,
+                                fontSize: 13,
+                                fontFamily: 'Geist',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _listenToAttendance,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _filteredEntries.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline_rounded,
+                              size: 44,
+                              color: isDark ? Colors.white24 : Colors.black26,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _searchQuery.isEmpty
+                                  ? 'No students found'
+                                  : 'No results for "$_searchQuery"',
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white38
+                                    : AppColors.lightSubtitleText,
+                                fontSize: 13,
+                                fontFamily: 'Geist',
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: _filteredEntries.length,
+                        itemBuilder: (context, index) {
+                          final entry = _filteredEntries[index];
+                          return FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: _buildStudentCard(entry, isDark),
+                          );
+                        },
                       ),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _filteredEntries.length,
-                      itemBuilder: (context, index) {
-                        final entry = _filteredEntries[index];
-                        return FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: _buildStudentCard(entry, isDark),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1115,6 +1131,20 @@ class _AttendanceManagementViewState extends State<AttendanceManagementView>
         ],
       ),
     );
-    return result ?? false;
+
+    if (result == true) {
+      // ✅ UNDO ALL CHANGES - Reset to original state
+      setState(() {
+        _attendanceEntries = _originalEntries.map((e) => e.copyWith()).toList();
+        _filterEntries();
+        _hasChanges = false;
+      });
+
+      // ✅ GO BACK TO DASHBOARD
+      Navigator.pop(context);
+      return true;
+    }
+
+    return false;
   }
 }

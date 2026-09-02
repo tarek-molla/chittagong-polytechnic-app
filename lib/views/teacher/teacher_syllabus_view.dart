@@ -162,184 +162,186 @@ class _TeacherSyllabusViewState extends State<TeacherSyllabusView>
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              _isEditing ? Icons.edit_rounded : Icons.add_rounded,
-              color: const Color(0xFF7B61FF),
-              size: 28,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _isEditing ? 'Edit Syllabus' : 'Add New Syllabus',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontFamily: 'Geist',
-                fontWeight: FontWeight.bold,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(
+                _isEditing ? Icons.edit_rounded : Icons.add_rounded,
+                color: const Color(0xFF7B61FF),
+                size: 28,
               ),
+              const SizedBox(width: 10),
+              Text(
+                _isEditing ? 'Edit Syllabus' : 'Add New Syllabus',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontFamily: 'Geist',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Subject Name
+                  TextFormField(
+                    controller: _subjectNameController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Subject Name *',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter subject name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Subject Code
+                  TextFormField(
+                    controller: _subjectCodeController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Subject Code',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Semester
+                  DropdownButtonFormField<int>(
+                    value: _formSemester,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    dropdownColor: isDark
+                        ? const Color(0xFF1E293B)
+                        : Colors.white,
+                    decoration: const InputDecoration(
+                      labelText: 'Semester *',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _semesterOptions.map((sem) {
+                      return DropdownMenuItem<int>(
+                        value: sem,
+                        child: Text('Semester $sem'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _formSemester = value;
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Please select semester';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // Content
+                  TextFormField(
+                    controller: _contentController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Content / Description',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // File URL
+                  TextFormField(
+                    controller: _fileUrlController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'File URL (optional)',
+                      border: OutlineInputBorder(),
+                      hintText: 'https://example.com/syllabus.pdf',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // File Name
+                  TextFormField(
+                    controller: _fileNameController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'File Name (optional)',
+                      border: OutlineInputBorder(),
+                      hintText: 'syllabus.pdf',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  fontFamily: 'Geist',
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _isSaving ? null : _saveSyllabus,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7B61FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      _isEditing ? 'Update' : 'Create',
+                      style: const TextStyle(
+                        fontFamily: 'Geist',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ],
         ),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Subject Name
-                TextFormField(
-                  controller: _subjectNameController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Subject Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter subject name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Subject Code
-                TextFormField(
-                  controller: _subjectCodeController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Subject Code',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Semester
-                DropdownButtonFormField<int>(
-                  value: _formSemester,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  dropdownColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : Colors.white,
-                  decoration: const InputDecoration(
-                    labelText: 'Semester *',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _semesterOptions.map((sem) {
-                    return DropdownMenuItem<int>(
-                      value: sem,
-                      child: Text('Semester $sem'),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _formSemester = value;
-                      });
-                    }
-                  },
-                  validator: (value) {
-                    if (value == null) {
-                      return 'Please select semester';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                // Content
-                TextFormField(
-                  controller: _contentController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Content / Description',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // File URL
-                TextFormField(
-                  controller: _fileUrlController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'File URL (optional)',
-                    border: OutlineInputBorder(),
-                    hintText: 'https://example.com/syllabus.pdf',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // File Name
-                TextFormField(
-                  controller: _fileNameController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'File Name (optional)',
-                    border: OutlineInputBorder(),
-                    hintText: 'syllabus.pdf',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark ? Colors.white54 : Colors.black54,
-                fontFamily: 'Geist',
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: _isSaving ? null : _saveSyllabus,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7B61FF),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text(
-                    _isEditing ? 'Update' : 'Create',
-                    style: const TextStyle(
-                      fontFamily: 'Geist',
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ],
       ),
     );
   }

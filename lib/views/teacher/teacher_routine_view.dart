@@ -97,19 +97,15 @@ class _TeacherRoutineViewState extends State<TeacherRoutineView>
             // Filter routines for this specific teacher
             List<RoutineEntry> teacherRoutines;
             if (_teacherName != null && _teacherName!.isNotEmpty) {
-              teacherRoutines = routineEntries
+                teacherRoutines = routineEntries
                   .where(
                     (entry) =>
-                        entry.teacherName.toLowerCase().contains(
-                          _teacherName!.toLowerCase(),
-                        ) ||
-                        entry.teacherName.toLowerCase().contains(
-                          _teacherName!.split(' ').first.toLowerCase(),
-                        ),
+                        entry.teacherName.toLowerCase() ==
+                        widget.user?.name.toLowerCase(),
                   )
                   .toList();
               print(
-                '👨‍🏫 Found ${teacherRoutines.length} classes for teacher: $_teacherName',
+                '👨‍🏫 Found ${teacherRoutines.length} classes for teacher: ${widget.user?.name}',
               );
             } else {
               // If no teacher name, show all routines

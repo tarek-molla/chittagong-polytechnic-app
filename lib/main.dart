@@ -11,30 +11,11 @@ Future<void> main() async {
   runApp(const CPIApp());
 }
 
-class CPIApp extends StatefulWidget {
+class CPIApp extends StatelessWidget {
   const CPIApp({super.key});
 
   @override
-  State<CPIApp> createState() => _CPIAppState();
-}
-
-class _CPIAppState extends State<CPIApp> {
-  bool _isLoading = true;
-
-  @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: LoadingScreen(
-            onComplete: () {
-              setState(() => _isLoading = false);
-            },
-          ),
-        ),
-      );
-    }
     return MaterialApp(
       title: 'CPI Portal',
       debugShowCheckedModeBanner: false,
@@ -43,6 +24,12 @@ class _CPIAppState extends State<CPIApp> {
       themeMode: ThemeMode.system,
       initialRoute: AppRoutes.welcome,
       onGenerateRoute: AppRouter.generateRoute,
+      // Wrap whole App tree inside the LoadingScreen overlay
+      builder: (context, child) {
+        return LoadingScreen(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

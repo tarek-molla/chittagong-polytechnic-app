@@ -47,8 +47,13 @@ class NoticeService {
         query.eq('class_name', className);
       }
 
-      if (!teacherView) {
-        query.eq('is_active', true);
+      // Only show active notices
+      query.eq('is_active', true);
+
+      // Teachers cannot see ADMINISTRATIVE/EMERGENCY notices
+      if (teacherView) {
+        query.neq('category', 'ADMINISTRATIVE');
+        query.neq('category', 'EMERGENCY');
       }
 
       final response = await query.order('created_at', ascending: false);
@@ -57,9 +62,18 @@ class NoticeService {
         return [];
       }
 
-      return (response as List)
+      var notices = (response as List)
           .map((json) => NoticeModel.fromJson(json))
           .toList();
+
+      // Sort: URGENT first, then by created_at
+      notices.sort((a, b) {
+        if (a.priority == 'urgent' && b.priority != 'urgent') return -1;
+        if (b.priority == 'urgent' && a.priority != 'urgent') return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+      return notices;
     } catch (e) {
       print('❌ Error fetching notices: $e');
       return [];
@@ -81,9 +95,23 @@ class NoticeService {
     String? subjectName,
     String? teacherName,
     String priority = 'normal',
+    String postedByRole = 'teacher',
   }) async {
     try {
       print('📝 Creating notice: $title');
+
+      // Validate teachers can't post urgent
+      if (postedByRole == 'teacher' && priority == 'urgent') {
+        print('❌ Teachers cannot post urgent notices');
+        return null;
+      }
+
+      // Validate teachers can't post admin-only categories
+      if (postedByRole == 'teacher' &&
+          ['ADMINISTRATIVE', 'EMERGENCY'].contains(category)) {
+        print('❌ Teachers cannot post admin-only categories');
+        return null;
+      }
 
       final newEntry = {
         'title': title,
@@ -92,7 +120,7 @@ class NoticeService {
         'action_type': actionType,
         'action_url': actionUrl,
         'attachments': attachments?.map((a) => a.toJson()).toList() ?? [],
-        'department': department,
+        'department': department ?? 'CST',
         'semester': semester,
         'class_name': className,
         'subject_code': subjectCode,
@@ -100,6 +128,7 @@ class NoticeService {
         'teacher_name': teacherName,
         'priority': priority,
         'is_active': true,
+        'posted_by_role': postedByRole,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
       };
@@ -115,7 +144,6 @@ class NoticeService {
     } catch (e) {
       print('❌ Error creating notice: $e');
       if (e is PostgrestException) {
-        print('❌ PostgrestException details:');
         print('   Message: ${e.message}');
         print('   Code: ${e.code}');
         print('   Details: ${e.details}');
@@ -135,7 +163,8 @@ class NoticeService {
     String? actionUrl,
     List<Attachment>? attachments,
     String? priority,
-    bool? isActive,
+    String? className,
+    int? semester,
   }) async {
     try {
       print('📝 Updating notice: $id');
@@ -144,16 +173,28 @@ class NoticeService {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      if (title != null) updateData['title'] = title;
-      if (content != null) updateData['content'] = content;
-      if (category != null) updateData['category'] = category;
+      if (title != null && title.isNotEmpty) updateData['title'] = title;
+      if (content != null && content.isNotEmpty)
+        updateData['content'] = content;
+      if (category != null && category.isNotEmpty)
+        updateData['category'] = category;
       if (actionType != null) updateData['action_type'] = actionType;
       if (actionUrl != null) updateData['action_url'] = actionUrl;
       if (attachments != null) {
         updateData['attachments'] = attachments.map((a) => a.toJson()).toList();
       }
-      if (priority != null) updateData['priority'] = priority;
-      if (isActive != null) updateData['is_active'] = isActive;
+      if (priority != null && priority.isNotEmpty)
+        updateData['priority'] = priority;
+      if (className != null) {
+        updateData['class_name'] = className.isEmpty ? null : className;
+      }
+      if (semester != null) {
+        updateData['semester'] = semester;
+      } else {
+        updateData['semester'] = null;
+      }
+
+      print('📝 Update data: $updateData');
 
       final response = await _supabase
           .from('notices')
@@ -166,24 +207,24 @@ class NoticeService {
       return NoticeModel.fromJson(response);
     } catch (e) {
       print('❌ Error updating notice: $e');
+      if (e is PostgrestException) {
+        print('   Message: ${e.message}');
+        print('   Code: ${e.code}');
+        print('   Details: ${e.details}');
+        print('   Hint: ${e.hint}');
+      }
       return null;
     }
   }
 
-  /// Delete a notice (soft delete)
+  /// Hard Delete a notice (permanently remove from database)
   Future<bool> deleteNotice(String id) async {
     try {
-      print('📝 Deleting notice: $id');
+      print('📝 Hard deleting notice: $id');
 
-      await _supabase
-          .from('notices')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from('notices').delete().eq('id', id);
 
-      print('✅ Notice deleted successfully: $id');
+      print('✅ Notice permanently deleted: $id');
       return true;
     } catch (e) {
       print('❌ Error deleting notice: $e');

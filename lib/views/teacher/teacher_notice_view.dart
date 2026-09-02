@@ -22,7 +22,6 @@ class TeacherNoticeView extends StatefulWidget {
 
 class _TeacherNoticeViewState extends State<TeacherNoticeView>
     with TickerProviderStateMixin {
-  // ✅ Changed to TickerProviderStateMixin for multiple controllers
   late NoticeService _noticeService;
   StreamSubscription<List<NoticeModel>>? _noticeSubscription;
 
@@ -31,26 +30,28 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
   bool _isSaving = false;
   String? _errorMessage;
 
+  String? _editingNoticeId;
+  bool _isEditing = false;
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _actionUrlController = TextEditingController();
   String _selectedPriority = 'normal';
   String _selectedCategory = 'GENERAL';
   String? _selectedClass;
   int? _selectedSemester;
-  String? _actionUrl;
 
   late AnimationController _glowAnimationController;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  final List<String> _priorities = ['normal', 'important', 'urgent'];
+  final List<String> _priorities = ['important', 'normal'];
   final List<String> _categories = [
-    'GENERAL',
     'ACADEMIC',
-    'EXAMINATION',
-    'ADMINISTRATIVE',
-    'EVENT',
+    'CLASS',
+    'SUGGESTION',
+    'GENERAL',
   ];
   final List<String> _classes = [
     'CMT-3rd-A',
@@ -91,6 +92,7 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
     _noticeSubscription?.cancel();
     _titleController.dispose();
     _contentController.dispose();
+    _actionUrlController.dispose();
     super.dispose();
   }
 
@@ -124,279 +126,598 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
         );
   }
 
-  Future<void> _showCreateNoticeDialog() async {
-    final isDark = AppThemeController.isDarkMode;
-
+  void _resetForm() {
     _titleController.clear();
     _contentController.clear();
-    _selectedPriority = 'normal';
-    _selectedCategory = 'GENERAL';
+    _actionUrlController.clear();
     _selectedClass = null;
     _selectedSemester = null;
-    _actionUrl = null;
+    _selectedPriority = 'normal';
+    _selectedCategory = 'GENERAL';
+    _isEditing = false;
+    _editingNoticeId = null;
+  }
+
+  Future<void> _showEditNoticeDialog(NoticeModel notice) async {
+    final isDark = AppThemeController.isDarkMode;
+
+    _isEditing = true;
+    _editingNoticeId = notice.id;
+
+    _titleController.text = notice.title;
+    _contentController.text = notice.content;
+    _selectedPriority = notice.priority;
+    _selectedCategory = notice.category;
+    _selectedClass = notice.className;
+    _selectedSemester = notice.semester;
+    _actionUrlController.text = notice.actionUrl ?? '';
 
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.add_rounded, color: Color(0xFFF59E0B), size: 28),
-            const SizedBox(width: 10),
-            Text(
-              'Post New Notice',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontFamily: 'Geist',
-                fontWeight: FontWeight.bold,
-              ),
+      builder: (context) => _buildNoticeDialog(isDark, isEditing: true),
+    );
+  }
+
+  Future<void> _showCreateNoticeDialog() async {
+    final isDark = AppThemeController.isDarkMode;
+    _resetForm();
+    _isEditing = false;
+    _editingNoticeId = null;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _buildNoticeDialog(isDark, isEditing: false),
+    );
+  }
+
+  Widget _buildNoticeDialog(bool isDark, {bool isEditing = false}) {
+    return StatefulBuilder(
+      builder: (context, setDialogState) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.82,
+            maxWidth: 440,
+          ),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1B2333), Color(0xFF0F1522)],
             ),
-          ],
-        ),
-        content: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Notice Title *',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a title';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _contentController,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Notice Content *',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter content';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _selectedPriority,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  dropdownColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : Colors.white,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _priorities.map((priority) {
-                    return DropdownMenuItem(
-                      value: priority,
-                      child: Row(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.12),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.7),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
                         children: [
                           Container(
-                            width: 12,
-                            height: 12,
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: _getPriorityColor(priority),
-                              shape: BoxShape.circle,
+                              gradient: isEditing
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFF3B82F6),
+                                        Color(0xFF2563EB),
+                                      ],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [
+                                        Color(0xFFF59E0B),
+                                        Color(0xFFD97706),
+                                      ],
+                                    ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      (isEditing
+                                              ? const Color(0xFF3B82F6)
+                                              : const Color(0xFFF59E0B))
+                                          .withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isEditing
+                                  ? Icons.edit_rounded
+                                  : Icons.add_comment_rounded,
+                              color: Colors.white,
+                              size: 22,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            priority.toUpperCase(),
-                            style: TextStyle(
-                              color: _getPriorityColor(priority),
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Geist',
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isEditing ? 'Edit Notice' : 'Post New Notice',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isEditing
+                                      ? 'Update your notice details'
+                                      : 'Broadcast to students and faculty',
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              onPressed: () {
+                                _resetForm();
+                                Navigator.pop(context);
+                              },
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedPriority = value;
-                      });
-                    }
-                  },
+                      const SizedBox(height: 16),
+
+                      // Form Fields
+                      Flexible(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: [
+                              _buildFormField(
+                                label: 'Notice Title',
+                                hint: 'Enter notice title...',
+                                controller: _titleController,
+                                icon: Icons.title_rounded,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a title';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildFormField(
+                                label: 'Notice Content',
+                                hint: 'Write your notice here...',
+                                controller: _contentController,
+                                icon: Icons.description_rounded,
+                                maxLines: 4,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter content';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildDropdownField<String>(
+                                label: 'Priority',
+                                value: _selectedPriority,
+                                items: _priorities,
+                                icon: Icons.flag_rounded,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setDialogState(() {
+                                      _selectedPriority = value;
+                                    });
+                                  }
+                                },
+                                getLabel: (value) => value.toUpperCase(),
+                                getColor: _getPriorityColor,
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildDropdownField<String>(
+                                label: 'Category',
+                                value: _selectedCategory,
+                                items: _categories,
+                                icon: Icons.category_rounded,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setDialogState(() {
+                                      _selectedCategory = value;
+                                    });
+                                  }
+                                },
+                                getLabel: (value) => value,
+                                getColor: (value) => const Color(0xFF3B82F6),
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildDropdownField<String?>(
+                                label: 'Target Class',
+                                value: _selectedClass,
+                                items: _classes,
+                                icon: Icons.class_rounded,
+                                showNull: true,
+                                nullLabel: 'All Classes',
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    _selectedClass = value;
+                                  });
+                                },
+                                getLabel: (value) => value ?? '',
+                                getColor: (value) => const Color(0xFF8B5CF6),
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildDropdownField<String?>(
+                                label: 'Target Semester',
+                                value: _selectedSemester?.toString(),
+                                items: _semesters
+                                    .map((e) => e.toString())
+                                    .toList(),
+                                icon: Icons.numbers_rounded,
+                                showNull: true,
+                                nullLabel: 'All Semesters',
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    _selectedSemester = value != null
+                                        ? int.parse(value)
+                                        : null;
+                                  });
+                                },
+                                getLabel: (value) => 'Semester $value',
+                                getColor: (value) => const Color(0xFF10B981),
+                              ),
+                              const SizedBox(height: 14),
+
+                              _buildFormField(
+                                label: 'Action URL',
+                                hint: 'https://example.com (optional)',
+                                controller: _actionUrlController,
+                                icon: Icons.link_rounded,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Bottom Dialog Actions
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () {
+                                _resetForm();
+                                Navigator.pop(context);
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontFamily: 'Geist',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        (isEditing
+                                                ? const Color(0xFF3B82F6)
+                                                : const Color(0xFFF59E0B))
+                                            .withOpacity(0.35),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _isSaving
+                                    ? null
+                                    : isEditing
+                                    ? _updateNotice
+                                    : _createNotice,
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  backgroundColor: isEditing
+                                      ? const Color(0xFF3B82F6)
+                                      : const Color(0xFFF59E0B),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            isEditing
+                                                ? Icons.save_rounded
+                                                : Icons.send_rounded,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isEditing
+                                                ? 'UPDATE NOTICE'
+                                                : 'POST NOTICE',
+                                            style: const TextStyle(
+                                              fontFamily: 'Geist',
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _selectedCategory,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  dropdownColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : Colors.white,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _categories.map((category) {
-                    return DropdownMenuItem(
-                      value: category,
-                      child: Text(category),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedCategory = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _selectedClass,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  dropdownColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : Colors.white,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Class (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('All Classes'),
-                    ),
-                    ..._classes.map((className) {
-                      return DropdownMenuItem(
-                        value: className,
-                        child: Text(className),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedClass = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  value: _selectedSemester,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  dropdownColor: isDark
-                      ? const Color(0xFF1E293B)
-                      : Colors.white,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Semester (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('All Semesters'),
-                    ),
-                    ..._semesters.map((sem) {
-                      return DropdownMenuItem(
-                        value: sem,
-                        child: Text('Semester $sem'),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedSemester = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: TextEditingController(text: _actionUrl),
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontFamily: 'Geist',
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Action URL (optional)',
-                    border: OutlineInputBorder(),
-                    hintText: 'https://example.com',
-                  ),
-                  onChanged: (value) {
-                    _actionUrl = value;
-                  },
-                ),
-              ],
+              ),
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: isDark ? Colors.white54 : Colors.black54,
-                fontFamily: 'Geist',
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: _isSaving ? null : _createNotice,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF59E0B),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'POST NOTICE',
-                    style: TextStyle(
-                      fontFamily: 'Geist',
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ],
       ),
+    );
+  }
+
+  Widget _buildFormField({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required IconData icon,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Geist',
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontFamily: 'Geist',
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.white.withOpacity(0.35),
+              fontSize: 13,
+              fontFamily: 'Geist',
+            ),
+            prefixIcon: Icon(icon, color: Colors.white38, size: 18),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.06),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFFF59E0B),
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required IconData icon,
+    required void Function(T?) onChanged,
+    required String Function(T) getLabel,
+    required Color Function(T) getColor,
+    bool showNull = false,
+    String? nullLabel,
+  }) {
+    final List<DropdownMenuItem<T>> menuItems = [];
+
+    if (showNull) {
+      menuItems.add(
+        DropdownMenuItem<T>(
+          value: null,
+          child: Text(
+            nullLabel ?? 'None',
+            style: const TextStyle(
+              color: Colors.white38,
+              fontFamily: 'Geist',
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+    }
+
+    menuItems.addAll(
+      items.map((item) {
+        final color = getColor(item);
+        return DropdownMenuItem<T>(
+          value: item,
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                getLabel(item),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'Geist',
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Geist',
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: DropdownButtonFormField<T>(
+            value: value,
+            isExpanded: true,
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Colors.white38,
+              size: 20,
+            ),
+            dropdownColor: const Color(0xFF1E293B),
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'Geist',
+              fontSize: 13,
+            ),
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: Colors.white38, size: 18),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+            ),
+            items: menuItems,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 
@@ -412,47 +733,117 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
       final teacherName = widget.teacher.name;
 
       final result = await _noticeService.createNotice(
-        title: _titleController.text,
-        content: _contentController.text,
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
         category: _selectedCategory,
-        actionType: _actionUrl != null && _actionUrl!.isNotEmpty
+        actionType: _actionUrlController.text.trim().isNotEmpty
             ? 'link'
             : 'none',
-        actionUrl: _actionUrl,
+        actionUrl: _actionUrlController.text.trim().isNotEmpty
+            ? _actionUrlController.text.trim()
+            : null,
         department: department,
         semester: _selectedSemester,
         className: _selectedClass,
         teacherName: teacherName,
         priority: _selectedPriority,
+        postedByRole: 'teacher',
       );
 
       if (result != null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Notice posted successfully!'),
-              backgroundColor: const Color(0xFF10B981),
+            const SnackBar(
+              content: Text('Notice posted successfully!'),
+              backgroundColor: Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
               ),
             ),
           );
         }
         HapticFeedback.heavyImpact();
+        _resetForm();
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        _listenToNotices();
       } else {
         throw Exception('Failed to create notice');
       }
-
-      if (mounted) {
-        Navigator.pop(context);
-      }
-      _listenToNotices();
     } catch (e) {
+      print('❌ Error creating notice: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to post notice: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateNotice() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_editingNoticeId == null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final result = await _noticeService.updateNotice(
+        id: _editingNoticeId!,
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        category: _selectedCategory,
+        priority: _selectedPriority,
+        className: _selectedClass,
+        semester: _selectedSemester,
+        actionType: _actionUrlController.text.trim().isNotEmpty
+            ? 'link'
+            : 'none',
+        actionUrl: _actionUrlController.text.trim().isNotEmpty
+            ? _actionUrlController.text.trim()
+            : null,
+      );
+
+      if (result != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Notice updated successfully!'),
+              backgroundColor: Color(0xFF3B82F6),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+              ),
+            ),
+          );
+          HapticFeedback.heavyImpact();
+        }
+        _resetForm();
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        _listenToNotices();
+      } else {
+        throw Exception('Failed to update notice');
+      }
+    } catch (e) {
+      print('❌ Error updating notice: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update notice: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -483,7 +874,7 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
           ),
         ),
         content: Text(
-          'Are you sure you want to delete "$title"?',
+          'Are you sure you want to permanently delete "$title"?',
           style: TextStyle(
             color: isDark ? Colors.white70 : Colors.black54,
             fontFamily: 'Geist',
@@ -531,18 +922,19 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
         await _noticeService.deleteNotice(id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Notice deleted successfully!'),
+            const SnackBar(
+              content: Text('Notice deleted successfully!'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
               ),
             ),
           );
         }
         _listenToNotices();
       } catch (e) {
+        print('❌ Error deleting notice: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -620,54 +1012,6 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
                           Colors.deepPurpleAccent.withOpacity(0.08),
                           Colors.deepPurpleAccent.withOpacity(0.01),
                           Colors.deepPurpleAccent.withOpacity(0),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-          if (!isDark) ...[
-            AnimatedBuilder(
-              animation: _glowAnimationController,
-              builder: (context, child) {
-                return Positioned(
-                  top: -120 + (_glowAnimationController.value * 20),
-                  right: -70 + (_glowAnimationController.value * 15),
-                  child: Container(
-                    width: 320,
-                    height: 320,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.blue.withOpacity(0.06),
-                          Colors.blue.withOpacity(0.01),
-                          Colors.blue.withOpacity(0),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            AnimatedBuilder(
-              animation: _glowAnimationController,
-              builder: (context, child) {
-                return Positioned(
-                  bottom: -60 - (_glowAnimationController.value * 15),
-                  left: -60 - (_glowAnimationController.value * 10),
-                  child: Container(
-                    width: 280,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.purple.withOpacity(0.04),
-                          Colors.purple.withOpacity(0.005),
-                          Colors.purple.withOpacity(0),
                         ],
                       ),
                     ),
@@ -977,18 +1321,25 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
   Widget _buildNoticeCard(NoticeModel notice, bool isDark) {
     final priorityColor = notice.priorityColor;
     final priorityLabel = notice.priorityLabel;
+    final categoryColor = notice.categoryColor;
+    final isUrgent = notice.priority == 'urgent';
+    final isAdminNotice = notice.postedByRole == 'admin';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.06),
+          color: isUrgent
+              ? Colors.red.withOpacity(0.5)
+              : (isDark
+                    ? Colors.white.withOpacity(0.06)
+                    : Colors.black.withOpacity(0.06)),
         ),
         gradient: LinearGradient(
-          colors: isDark
+          colors: isUrgent
+              ? [Colors.red.withOpacity(0.08), Colors.red.withOpacity(0.02)]
+              : isDark
               ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.01)]
               : [
                   Colors.black.withOpacity(0.02),
@@ -998,9 +1349,9 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
           end: Alignment.bottomRight,
         ),
         boxShadow: [
-          if (notice.priority == 'urgent' && !isDark)
+          if (isUrgent && !isDark)
             BoxShadow(
-              color: Colors.redAccent.withOpacity(0.1),
+              color: Colors.red.withOpacity(0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1021,7 +1372,7 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
                       width: 4,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: priorityColor,
+                        color: isUrgent ? Colors.red : priorityColor,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -1042,7 +1393,9 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -1050,67 +1403,128 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: priorityColor.withOpacity(0.15),
+                                  color: isUrgent
+                                      ? Colors.red.withOpacity(0.15)
+                                      : priorityColor.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  priorityLabel,
+                                  isUrgent ? 'URGENT' : priorityLabel,
                                   style: TextStyle(
-                                    color: priorityColor,
+                                    color: isUrgent
+                                        ? Colors.red
+                                        : priorityColor,
                                     fontSize: 8,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Geist',
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white.withOpacity(0.08)
-                                      : Colors.black.withOpacity(0.05),
+                                  color: categoryColor.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   notice.category,
                                   style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white60
-                                        : Colors.black54,
+                                    color: categoryColor,
                                     fontSize: 8,
+                                    fontWeight: FontWeight.bold,
                                     fontFamily: 'Geist',
                                   ),
                                 ),
                               ),
-                              const Spacer(),
-                              Text(
-                                notice.timeAgo,
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white38
-                                      : Colors.black38,
-                                  fontSize: 9,
-                                  fontFamily: 'Geist',
+                              if (isAdminNotice)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'ADMIN',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 7,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Geist',
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              if (isUrgent)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.4),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '⚠ URGENT',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 7,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Geist',
+                                    ),
+                                  ),
+                                ),
                             ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            notice.timeAgo,
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 9,
+                              fontFamily: 'Geist',
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => _deleteNotice(notice.id, notice.title),
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        color: Colors.redAccent.withOpacity(0.5),
-                        size: 18,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    Row(
+                      children: [
+                        if (!isUrgent && !isAdminNotice)
+                          IconButton(
+                            onPressed: () => _showEditNoticeDialog(notice),
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              size: 18,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        if (!isUrgent && !isAdminNotice)
+                          IconButton(
+                            onPressed: () =>
+                                _deleteNotice(notice.id, notice.title),
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.redAccent.withOpacity(0.5),
+                              size: 18,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -1131,7 +1545,9 @@ class _TeacherNoticeViewState extends State<TeacherNoticeView>
                     padding: const EdgeInsets.only(top: 8),
                     child: InkWell(
                       onTap: () {
-                        if (notice.actionUrl != null) {}
+                        if (notice.actionUrl != null) {
+                          // Open URL
+                        }
                       },
                       child: const Row(
                         children: [
