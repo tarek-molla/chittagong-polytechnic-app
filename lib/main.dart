@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/router.dart';
 import 'core/theme_provider.dart';
 import 'services/supabase_service.dart';
+import 'widgets/loading_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,11 +11,30 @@ Future<void> main() async {
   runApp(const CPIApp());
 }
 
-class CPIApp extends StatelessWidget {
+class CPIApp extends StatefulWidget {
   const CPIApp({super.key});
 
   @override
+  State<CPIApp> createState() => _CPIAppState();
+}
+
+class _CPIAppState extends State<CPIApp> {
+  bool _isLoading = true;
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: LoadingScreen(
+            onComplete: () {
+              setState(() => _isLoading = false);
+            },
+          ),
+        ),
+      );
+    }
     return MaterialApp(
       title: 'CPI Portal',
       debugShowCheckedModeBanner: false,
