@@ -181,14 +181,14 @@ class NoticeModel {
         return const Color(0xFF8B5CF6); // Purple
       case 'GENERAL':
         return const Color(0xFF6B7280); // Gray
-      case 'ADMINISTRATIVE':
-        return const Color(0xFFF59E0B); // Orange
-      case 'EMERGENCY':
-        return const Color(0xFFEF4444); // Red
       case 'EXAMINATION':
         return const Color(0xFFEC4899); // Pink
-      case 'EVENT':
+      case 'ADMISSION':
+        return const Color(0xFFF59E0B); // Orange
+      case 'ROUTINE':
         return const Color(0xFF06B6D4); // Cyan
+      case 'ADMINISTRATIVE':
+        return const Color(0xFFEF4444); // Red
       default:
         return const Color(0xFF6B7280);
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
@@ -46,7 +47,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   // ✅ Notice Stream
   StreamSubscription<List<NoticeModel>>? _noticeSubscription;
   List<NoticeModel> _latestNotices = [];
-  List<Map<String, String>> _noticeOffers = [];
+  List<Map<String, dynamic>> _noticeOffers = [];
 
   // ✅ Assessment Data
   List<AssessmentModel> _assessments = [];
@@ -157,7 +158,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     _carouselAutoScrollTimer = Timer.periodic(const Duration(seconds: 4), (
       timer,
     ) {
-      if (_carouselPageController.hasClients) {
+      if (_noticeOffers.isNotEmpty && _carouselPageController.hasClients) {
         _currentCarouselPage =
             (_currentCarouselPage + 1) % _noticeOffers.length;
         _carouselPageController.animateToPage(
@@ -249,7 +250,22 @@ class _StudentDashboardState extends State<StudentDashboard>
         if (!mounted) return;
 
         setState(() {
-          _latestNotices = notices.take(3).toList();
+          // ✅ Filter active notices
+          final activeNotices = notices.where((n) => n.isActive).toList();
+
+          // ✅ Sort by priority: Urgent (3) > Important (2) > Normal (1)
+          // Within same priority, randomize for 'others'
+          activeNotices.sort((a, b) {
+            final aPriority = _getPriorityWeight(a.priority);
+            final bPriority = _getPriorityWeight(b.priority);
+            if (aPriority != bPriority) {
+              return bPriority.compareTo(aPriority); // Higher priority first
+            }
+            // Randomize within same priority for normal notices
+            return math.Random().nextBool() ? 1 : -1;
+          });
+
+          _latestNotices = activeNotices; // No limit - show all active notices
 
           _noticeOffers = _latestNotices.map((notice) {
             return {
@@ -258,7 +274,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                   ? '${notice.content.substring(0, 60)}...'
                   : notice.content,
               'tag': notice.category,
-              'color': _getCategoryColor(notice.category),
+              'color': notice.categoryColor,
+              'priority': notice.priority, // Pass priority for badge rendering
             };
           }).toList();
 
@@ -280,7 +297,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                 'title': '📢 Welcome to CPI Portal',
                 'subtitle': 'No notices available yet. Check back later!',
                 'tag': 'GENERAL',
-                'color': '0xFF7C3AED',
+                'color': const Color(0xFF6B7280),
+                'priority': 'normal',
               },
             ];
           });
@@ -289,21 +307,14 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-  String _getCategoryColor(String category) {
-    switch (category.toUpperCase()) {
-      case 'EXAMINATION':
-        return '0xFF0284C7';
-      case 'ADMISSION':
-        return '0xFF2563EB';
-      case 'ROUTINE':
-        return '0xFF16A34A';
-      case 'EVENT':
-        return '0xFF3B82F6';
-      case 'OFFER':
-        return '0xFFD97706';
-      case 'GENERAL':
+  int _getPriorityWeight(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'urgent':
+        return 3;
+      case 'important':
+        return 2;
       default:
-        return '0xFF7C3AED';
+        return 1; // normal
     }
   }
 
@@ -1695,22 +1706,80 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
+  // ✅ UPDATED: Build Promo Carousel with rotating priority and random order
   Widget _buildPromoCarouselSection(bool isDark) {
-    if (_noticeOffers.isEmpty) {
+    // ✅ Separate notices by priority
+    final urgentNotices = _latestNotices
+        .where((n) => n.priority == 'urgent')
+        .toList();
+    final importantNotices = _latestNotices
+        .where((n) => n.priority == 'important')
+        .toList();
+    final normalNotices = _latestNotices
+        .where((n) => n.priority != 'urgent' && n.priority != 'important')
+        .toList();
+
+    // ✅ SHUFFLE EACH GROUP for rotation on refresh
+    urgentNotices.shuffle();
+    importantNotices.shuffle();
+    normalNotices.shuffle();
+
+    // ✅ Combine: URGENT (shuffled) → IMPORTANT (shuffled) → NORMAL (shuffled)
+    final sortedNotices = [
+      ...urgentNotices,
+      ...importantNotices,
+      ...normalNotices,
+    ];
+
+    // ✅ If more than 5, take first 5, else show all
+    final displayNotices = sortedNotices.length > 5
+        ? sortedNotices.sublist(0, 5)
+        : sortedNotices;
+
+    // ✅ Total notices count for the badge
+    final totalNotices = _latestNotices.length;
+
+    if (sortedNotices.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 4.0, bottom: 12.0),
-            child: Text(
-              "Recent Notices & Updates",
-              style: TextStyle(
-                color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Geist',
-                letterSpacing: 0.5,
-              ),
+            child: Row(
+              children: [
+                Text(
+                  "Recent Notices & Updates",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Geist',
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '0 Notices',
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Geist',
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Container(
@@ -1722,8 +1791,13 @@ class _StudentDashboardState extends State<StudentDashboard>
                   : Colors.black.withOpacity(0.05),
             ),
             child: const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0891B2)),
+              child: Text(
+                'No notices available',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
+                  fontFamily: 'Geist',
+                ),
               ),
             ),
           ),
@@ -1736,15 +1810,79 @@ class _StudentDashboardState extends State<StudentDashboard>
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4.0, bottom: 12.0),
-          child: Text(
-            "Recent Notices & Updates",
-            style: TextStyle(
-              color: isDark ? Colors.white : AppColors.lightPrimaryText,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Geist',
-              letterSpacing: 0.5,
-            ),
+          child: Row(
+            children: [
+              Text(
+                "Recent Notices & Updates",
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Geist',
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              // ✅ Show total notice count
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF0284C7).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.notifications_rounded,
+                      color: const Color(0xFF0284C7),
+                      size: 10,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$totalNotices Notices',
+                      style: TextStyle(
+                        color: const Color(0xFF0284C7),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Geist',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ✅ Refresh button
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () {
+                  // ✅ Reshuffle and refresh
+                  setState(() {
+                    urgentNotices.shuffle();
+                    importantNotices.shuffle();
+                    normalNotices.shuffle();
+                    _currentCarouselPage = 0;
+                    _carouselPageController.jumpToPage(0);
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.black.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.refresh_rounded,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    size: 14,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(
@@ -1756,12 +1894,20 @@ class _StudentDashboardState extends State<StudentDashboard>
                 _currentCarouselPage = pageIndex;
               });
             },
-            itemCount: _noticeOffers.length,
+            itemCount: displayNotices.length,
             itemBuilder: (context, index) {
-              final promoItem = _noticeOffers[index];
-              final Color accentThemeColor = Color(
-                int.parse(promoItem['color']!),
-              );
+              final notice = displayNotices[index];
+              final Color accentColor = notice.categoryColor;
+              final bool isUrgent = notice.priority == 'urgent';
+              final bool isImportant = notice.priority == 'important';
+              final bool isHighPriority = isUrgent || isImportant;
+
+              final Color priorityColor = isUrgent
+                  ? Colors.red
+                  : isImportant
+                  ? Colors.amber.shade700
+                  : accentColor;
+
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2.0),
                 decoration: BoxDecoration(
@@ -1779,17 +1925,38 @@ class _StudentDashboardState extends State<StudentDashboard>
                           ),
                         ],
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white.withAlpha(20)
-                        : AppColors.lightCardBorder,
-                    width: 1,
+                    color: isHighPriority
+                        ? priorityColor.withOpacity(0.4)
+                        : (isDark
+                              ? Colors.white.withAlpha(20)
+                              : AppColors.lightCardBorder),
+                    width: isHighPriority ? 1.5 : 1,
                   ),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: Stack(
                     children: [
-                      if (isDark)
+                      if (isHighPriority)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  priorityColor.withOpacity(
+                                    isDark ? 0.12 : 0.08,
+                                  ),
+                                  priorityColor.withOpacity(
+                                    isDark ? 0.04 : 0.02,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (isDark)
                         Positioned.fill(
                           child: Container(
                             decoration: BoxDecoration(
@@ -1814,8 +1981,10 @@ class _StudentDashboardState extends State<StudentDashboard>
                             shape: BoxShape.circle,
                             gradient: RadialGradient(
                               colors: [
-                                accentThemeColor.withAlpha(isDark ? 45 : 20),
-                                accentThemeColor.withAlpha(0),
+                                (isHighPriority ? priorityColor : accentColor)
+                                    .withAlpha(isDark ? 45 : 20),
+                                (isHighPriority ? priorityColor : accentColor)
+                                    .withAlpha(0),
                               ],
                             ),
                           ),
@@ -1859,30 +2028,114 @@ class _StudentDashboardState extends State<StudentDashboard>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: accentThemeColor.withAlpha(
-                                        isDark ? 30 : 25,
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: accentColor.withAlpha(
+                                            isDark ? 30 : 25,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          notice.category,
+                                          style: TextStyle(
+                                            color: accentColor,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Geist',
+                                          ),
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      promoItem['tag']!,
-                                      style: TextStyle(
-                                        color: accentThemeColor,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'Geist',
-                                      ),
-                                    ),
+                                      if (isUrgent)
+                                        Container(
+                                          margin: const EdgeInsets.only(
+                                            left: 6,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withAlpha(20),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.red.withAlpha(40),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.warning_amber_rounded,
+                                                color: Colors.red,
+                                                size: 10,
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                'URGENT',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'Geist',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (isImportant && !isUrgent)
+                                        Container(
+                                          margin: const EdgeInsets.only(
+                                            left: 6,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withAlpha(20),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.amber.withAlpha(40),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.priority_high_rounded,
+                                                color: Colors.amber.shade700,
+                                                size: 10,
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                'IMPORTANT',
+                                                style: TextStyle(
+                                                  color: Colors.amber.shade700,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'Geist',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    promoItem['title']!,
+                                    notice.title,
                                     style: TextStyle(
                                       color: isDark
                                           ? Colors.white
@@ -1896,7 +2149,9 @@ class _StudentDashboardState extends State<StudentDashboard>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    promoItem['subtitle']!,
+                                    notice.content.length > 60
+                                        ? '${notice.content.substring(0, 60)}...'
+                                        : notice.content,
                                     style: TextStyle(
                                       color: isDark
                                           ? Colors.white.withAlpha(140)
@@ -1928,8 +2183,14 @@ class _StudentDashboardState extends State<StudentDashboard>
                                 ),
                               ),
                               child: Icon(
-                                Icons.campaign_rounded,
-                                color: accentThemeColor,
+                                isUrgent
+                                    ? Icons.warning_amber_rounded
+                                    : isImportant
+                                    ? Icons.priority_high_rounded
+                                    : Icons.campaign_rounded,
+                                color: isHighPriority
+                                    ? priorityColor
+                                    : accentColor,
                                 size: 24,
                               ),
                             ),
@@ -1946,8 +2207,11 @@ class _StudentDashboardState extends State<StudentDashboard>
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_noticeOffers.length, (dotIndex) {
+          children: List.generate(displayNotices.length, (dotIndex) {
             final bool isCurrentDot = _currentCarouselPage == dotIndex;
+            final bool isPriorityDot =
+                displayNotices[dotIndex].priority == 'urgent' ||
+                displayNotices[dotIndex].priority == 'important';
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               margin: const EdgeInsets.symmetric(horizontal: 3.0),
@@ -1956,7 +2220,7 @@ class _StudentDashboardState extends State<StudentDashboard>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 color: isCurrentDot
-                    ? const Color(0xFF0284C7)
+                    ? (isPriorityDot ? Colors.red : const Color(0xFF0284C7))
                     : (isDark ? Colors.white24 : Colors.black12),
               ),
             );
