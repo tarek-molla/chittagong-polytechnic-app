@@ -45,14 +45,14 @@ class AssessmentService {
     }
   }
 
-  /// Get students for a class
+  /// Get students for a class from students_login table
   Future<List<Student>> getStudents(String className, int semester) async {
     try {
       print('📚 Fetching students for class: $className, semester: $semester');
 
       final response = await _supabase
           .from('students_login')
-          .select()
+          .select('roll_number, student_name')
           .eq('class_name', className)
           .eq('semester', semester)
           .eq('is_active', true)
@@ -61,39 +61,36 @@ class AssessmentService {
       print('📊 Found ${response.length} students');
 
       if (response.isEmpty) {
-        print('⚠️ No students found, using sample data');
-        return _getSampleStudents();
+        print('⚠️ No students found');
+        return [];
       }
 
       return (response as List).map((json) => Student.fromJson(json)).toList();
     } catch (e) {
       print('❌ Error fetching students: $e');
-      return _getSampleStudents();
+      return [];
     }
   }
 
-  List<Student> _getSampleStudents() {
-    return [
-      Student(roll: 'CMT-508401', name: 'Mohammed Akash'),
-      Student(roll: 'CMT-508402', name: 'Nasrin Akter'),
-      Student(roll: 'CMT-508403', name: 'Sumaiya Khan'),
-      Student(roll: 'CMT-508412', name: 'Tarek Molla'),
-      Student(roll: 'CMT-508415', name: 'Ahsan Habib'),
-      Student(roll: 'CMT-508418', name: 'Farhana Yeasmin'),
-    ];
-  }
-
-  /// Get registered students for class/semester from students table
+  /// Get registered students for class/semester from students_login table
   Future<List<Map<String, dynamic>>> getClassStudents(
     String className,
     int semester,
   ) async {
     try {
+      print(
+        '📊 Fetching class students from students_login for: $className, semester: $semester',
+      );
+
       final response = await _supabase
-          .from('students')
+          .from('students_login')
           .select('roll_number, student_name')
+          .eq('class_name', className)
           .eq('semester', semester)
+          .eq('is_active', true)
           .order('roll_number', ascending: true);
+
+      print('📊 Found ${response.length} students in class: $className');
 
       return (response as List)
           .map(
@@ -116,11 +113,19 @@ class AssessmentService {
     int semester,
   ) async {
     try {
+      print(
+        '📊 Fetching assessments for: $className, $subjectCode, semester: $semester',
+      );
+
       final response = await _supabase
           .from('continuous_assessment')
           .select()
+          .eq('class_name', className)
+          .eq('subject_code', subjectCode)
           .eq('semester', semester)
           .order('roll_number', ascending: true);
+
+      print('📊 Found ${response.length} assessments');
 
       if (response == null || (response as List).isEmpty) {
         return [];
@@ -146,13 +151,13 @@ class AssessmentService {
     String department,
     String teacherName, {
     String assessmentName = 'CT-1',
-    String assessmentType = 'Theory',
+    String assessmentType = 'CT',
     double totalMarks = 30,
   }) async {
     try {
       print('📝 Creating assessment for: $studentRoll - $assessmentName');
 
-      // Check if assessment exists
+      // Check if assessment exists using the unique constraint fields
       final response = await _supabase
           .from('continuous_assessment')
           .select()
@@ -167,7 +172,7 @@ class AssessmentService {
         return AssessmentModel.fromJson(response);
       }
 
-      // Create new assessment
+      // Create new assessment with all required fields
       final newEntry = {
         'roll_number': studentRoll,
         'student_name': studentName,
@@ -186,11 +191,18 @@ class AssessmentService {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
+      print('📝 Inserting: $newEntry');
+
       final insertResponse = await _supabase
           .from('continuous_assessment')
           .insert(newEntry)
           .select()
-          .single();
+          .maybeSingle();
+
+      if (insertResponse == null) {
+        print('❌ Insert returned null - RLS policy might be blocking');
+        return null;
+      }
 
       print('✅ Created assessment for $studentRoll');
       return AssessmentModel.fromJson(insertResponse);
@@ -208,21 +220,76 @@ class AssessmentService {
     String? remarks,
   }) async {
     try {
-      final response = await _supabase
-          .from('continuous_assessment')
-          .update({'obtained_marks': obtainedMarks})
-          .eq('id', assessmentId)
-          .select();
+      print('🔧 Updating ID=$assessmentId -> $obtainedMarks / $totalMarks');
 
-      if (response == null || (response as List).isEmpty) {
-        print('⚠️ Update warning: 0 rows modified for ID: $assessmentId');
+      // First check if the record exists
+      final checkResponse = await _supabase
+          .from('continuous_assessment')
+          .select('id, roll_number, obtained_marks')
+          .eq('id', assessmentId)
+          .maybeSingle();
+
+      if (checkResponse == null) {
+        print('❌ Record not found for ID: $assessmentId');
+
+        // Try with UUID cast (if it's not already UUID)
+        try {
+          print('🔄 Trying with cast to UUID...');
+          final uuidCheck = await _supabase
+              .from('continuous_assessment')
+              .select('id')
+              .eq('id', assessmentId.toString())
+              .maybeSingle();
+
+          if (uuidCheck != null) {
+            print('✅ Found with UUID cast');
+          } else {
+            print('❌ Still not found after UUID cast');
+          }
+        } catch (e) {
+          print('❌ UUID cast failed: $e');
+        }
+
         return null;
       }
 
-      return AssessmentModel.fromJson((response as List).first);
+      print('✅ Record found, updating...');
+
+      // Update the record
+      final response = await _supabase
+          .from('continuous_assessment')
+          .update({
+            'obtained_marks': obtainedMarks,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', assessmentId)
+          .select()
+          .maybeSingle();
+
+      if (response == null) {
+        print('❌ Update returned null - no rows modified');
+        return null;
+      }
+
+      print('✅ Updated assessment marks for ID: $assessmentId');
+      return AssessmentModel.fromJson(response);
     } catch (e) {
       print('❌ Error updating assessment marks: $e');
       return null;
+    }
+  }
+
+  /// Delete an assessment entry
+  Future<bool> deleteAssessment(String assessmentId) async {
+    try {
+      await _supabase
+          .from('continuous_assessment')
+          .delete()
+          .eq('id', assessmentId);
+      return true;
+    } catch (e) {
+      print('❌ Error deleting assessment: $e');
+      return false;
     }
   }
 }

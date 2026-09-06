@@ -23,6 +23,7 @@ import 'about_institution_view.dart';
 import 'privacy_policy_view.dart';
 import 'help_support_view.dart';
 import 'syllabus_view.dart';
+import '../../widgets/premium_refresh_indicator.dart';
 
 class StudentDashboard extends StatefulWidget {
   final AppUser user;
@@ -1199,511 +1200,591 @@ class _StudentDashboardState extends State<StudentDashboard>
             ),
           ],
           Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20.0, 52.0, 20.0, 36.0),
-                    child: SizedBox(
-                      height: 56,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Builder(
-                                  builder: (context) {
-                                    return InkWell(
-                                      onTap: () {
-                                        Scaffold.of(context).openEndDrawer();
-                                      },
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: Stack(
-                                        alignment: Alignment.bottomRight,
-                                        children: [
-                                          Container(
-                                            width: 46,
-                                            height: 46,
-                                            decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? Colors.white.withAlpha(20)
-                                                  : Colors.black.withAlpha(15),
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
+            child: PremiumRefreshIndicator(
+              onRefresh: _refreshAll,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20.0,
+                        52.0,
+                        20.0,
+                        36.0,
+                      ),
+                      child: SizedBox(
+                        height: 56,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Builder(
+                                    builder: (context) {
+                                      return InkWell(
+                                        onTap: () {
+                                          Scaffold.of(context).openEndDrawer();
+                                        },
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: Stack(
+                                          alignment: Alignment.bottomRight,
+                                          children: [
+                                            Container(
+                                              width: 46,
+                                              height: 46,
+                                              decoration: BoxDecoration(
                                                 color: isDark
-                                                    ? Colors.white.withAlpha(40)
+                                                    ? Colors.white.withAlpha(20)
                                                     : Colors.black.withAlpha(
-                                                        20,
+                                                        15,
                                                       ),
-                                              ),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(24),
-                                              child: Image.asset(
-                                                'assets/cpi_logo.png',
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (c, e, s) => Icon(
-                                                  Icons.person_rounded,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
                                                   color: isDark
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                  size: 20,
+                                                      ? Colors.white.withAlpha(
+                                                          40,
+                                                        )
+                                                      : Colors.black.withAlpha(
+                                                          20,
+                                                        ),
+                                                ),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(24),
+                                                child: Image.asset(
+                                                  'assets/cpi_logo.png',
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (c, e, s) =>
+                                                      Icon(
+                                                        Icons.person_rounded,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                        size: 20,
+                                                      ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.all(2),
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFF006BB3),
-                                              shape: BoxShape.circle,
+                                            Container(
+                                              padding: const EdgeInsets.all(2),
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF006BB3),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.menu_rounded,
+                                                color: Colors.white,
+                                                size: 8,
+                                              ),
                                             ),
-                                            child: const Icon(
-                                              Icons.menu_rounded,
-                                              color: Colors.white,
-                                              size: 8,
-                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          widget.user.name.toUpperCase(),
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.lightPrimaryText,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                            fontFamily: 'Geist',
+                                            letterSpacing: 0.3,
                                           ),
-                                        ],
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          "${widget.user.department?.shortCode ?? 'CST'} • Roll: ${widget.user.rollNumber ?? '823791'}",
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white.withAlpha(140)
+                                                : AppColors.lightSubtitleText,
+                                            fontSize: 11,
+                                            fontFamily: 'Geist',
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const ThemeToggleSwitch(),
+                                const SizedBox(width: 10),
+                                IconButton(
+                                  onPressed: () {
+                                    showSearch(
+                                      context: context,
+                                      delegate: StudentSearchDelegate(
+                                        user: widget.user,
                                       ),
                                     );
                                   },
+                                  icon: Icon(
+                                    Icons.search_rounded,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    size: 18,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.black.withOpacity(0.06),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
+                                  ),
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        widget.user.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white
-                                              : AppColors.lightPrimaryText,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          fontFamily: 'Geist',
-                                          letterSpacing: 0.3,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () =>
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        AppRoutes.login,
                                       ),
-                                      const SizedBox(height: 1),
-                                      Text(
-                                        "${widget.user.department?.shortCode ?? 'CST'} • Roll: ${widget.user.rollNumber ?? '823791'}",
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white.withAlpha(140)
-                                              : AppColors.lightSubtitleText,
-                                          fontSize: 11,
-                                          fontFamily: 'Geist',
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                  icon: const Icon(
+                                    Icons.power_settings_new_rounded,
+                                    color: Color(0xFFFFA0A0),
+                                    size: 16,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withAlpha(12)
+                                        : Colors.black.withAlpha(8),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const ThemeToggleSwitch(),
-                              const SizedBox(width: 10),
-                              IconButton(
-                                onPressed: () {
-                                  showSearch(
-                                    context: context,
-                                    delegate: StudentSearchDelegate(
-                                      user: widget.user,
-                                    ),
-                                  );
-                                },
-                                icon: Icon(
-                                  Icons.search_rounded,
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppColors.lightPrimaryText,
-                                  size: 18,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withOpacity(0.06)
-                                      : Colors.black.withOpacity(0.06),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                onPressed: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  AppRoutes.login,
-                                ),
-                                icon: const Icon(
-                                  Icons.power_settings_new_rounded,
-                                  color: Color(0xFFFFA0A0),
-                                  size: 16,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withAlpha(12)
-                                      : Colors.black.withAlpha(8),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(
-                          20.0,
-                          24.0,
-                          20.0,
-                          130.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withAlpha(6)
-                              : AppColors.lightBackground.withAlpha(180),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withAlpha(25)
-                                  : AppColors.lightCardBorder,
-                              width: 1.2,
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Attendance & CGPA Cards
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      20 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: AnimatedBuilder(
-                                            animation:
-                                                _attendanceCountAnimation,
-                                            builder: (context, child) {
-                                              return _buildMetricGlassCard(
-                                                "Attendance",
-                                                "${_attendanceCountAnimation.value.toStringAsFixed(1)}%",
-                                                Icons.bolt_rounded,
-                                                const Color(0xFF00E5FF),
-                                                hasIndicator: true,
-                                                onTap: () =>
-                                                    Navigator.pushNamed(
-                                                      context,
-                                                      AppRoutes
-                                                          .attendanceDetail,
-                                                      arguments:
-                                                          StudentRouteArgs(
-                                                            user: widget.user,
-                                                          ),
-                                                    ),
-                                                isDark: isDark,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: AnimatedBuilder(
-                                            animation: _cgpaCountAnimation,
-                                            builder: (context, child) {
-                                              return _buildMetricGlassCard(
-                                                "Current CGPA",
-                                                _cgpaCountAnimation.value
-                                                    .toStringAsFixed(2),
-                                                Icons.emoji_events_rounded,
-                                                const Color(0xFF7B61FF),
-                                                hasIndicator: false,
-                                                onTap: () =>
-                                                    Navigator.pushNamed(
-                                                      context,
-                                                      AppRoutes.resultsLedger,
-                                                      arguments:
-                                                          StudentRouteArgs(
-                                                            user: widget.user,
-                                                          ),
-                                                    ),
-                                                isDark: isDark,
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 20),
-
-                            // Live Schedule Tracker
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      30 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildLiveScheduleTimelineTracker(
-                                      isDark,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 28),
-
-                            // CPI Services Grid - ✅ Fees Removed
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      40 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4.0,
-                                          ),
-                                          child: Text(
-                                            "CPI Services",
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppColors.lightPrimaryText,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Geist',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        GridView.count(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          crossAxisCount: 3,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                          childAspectRatio: 1.0,
-                                          children: [
-                                            _buildAnimatedServiceTile(
-                                              "Routine",
-                                              Icons.calendar_today_rounded,
-                                              const Color(0xFF2563EB),
-                                              () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        RoutineView(
-                                                          user: widget.user,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildAnimatedServiceTile(
-                                              "Results",
-                                              Icons.assessment_rounded,
-                                              const Color(0xFF16A34A),
-                                              () {
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes.resultsLedger,
-                                                  arguments: StudentRouteArgs(
-                                                    user: widget.user,
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildAnimatedServiceTile(
-                                              "Admit Card",
-                                              Icons.badge_rounded,
-                                              const Color(0xFFD97706),
-                                              () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        AdmitCardView(
-                                                          user: widget.user,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            // ✅ Fees REMOVED
-                                            _buildAnimatedServiceTile(
-                                              "Syllabus",
-                                              Icons.menu_book_rounded,
-                                              const Color(0xFF7C3AED),
-                                              () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        SyllabusView(
-                                                          user: widget.user,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildAnimatedServiceTile(
-                                              "Notices",
-                                              Icons.campaign_rounded,
-                                              const Color(0xFFE11D48),
-                                              () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const NoticeBoardScreen(),
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            // Empty tile to maintain grid
-                                            const SizedBox(),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Recent Notices Carousel
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      50 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildPromoCarouselSection(isDark),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Continuous Assessments
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      60 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4.0,
-                                          ),
-                                          child: Text(
-                                            "Continuous Assessments",
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppColors.lightPrimaryText,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Geist',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        _buildContinuousAssessmentsLedger(
-                                          isDark,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(
+                            20.0,
+                            24.0,
+                            20.0,
+                            130.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(6)
+                                : AppColors.lightBackground.withAlpha(180),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: isDark
+                                    ? Colors.white.withAlpha(25)
+                                    : AppColors.lightCardBorder,
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Attendance & CGPA Cards
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        20 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: AnimatedBuilder(
+                                              animation:
+                                                  _attendanceCountAnimation,
+                                              builder: (context, child) {
+                                                return _buildMetricGlassCard(
+                                                  "Attendance",
+                                                  "${_attendanceCountAnimation.value.toStringAsFixed(1)}%",
+                                                  Icons.bolt_rounded,
+                                                  const Color(0xFF00E5FF),
+                                                  hasIndicator: true,
+                                                  onTap: () =>
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        AppRoutes
+                                                            .attendanceDetail,
+                                                        arguments:
+                                                            StudentRouteArgs(
+                                                              user: widget.user,
+                                                            ),
+                                                      ),
+                                                  isDark: isDark,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: AnimatedBuilder(
+                                              animation: _cgpaCountAnimation,
+                                              builder: (context, child) {
+                                                return _buildMetricGlassCard(
+                                                  "Current CGPA",
+                                                  _cgpaCountAnimation.value
+                                                      .toStringAsFixed(2),
+                                                  Icons.emoji_events_rounded,
+                                                  const Color(0xFF7B61FF),
+                                                  hasIndicator: false,
+                                                  onTap: () =>
+                                                      Navigator.pushNamed(
+                                                        context,
+                                                        AppRoutes.resultsLedger,
+                                                        arguments:
+                                                            StudentRouteArgs(
+                                                              user: widget.user,
+                                                            ),
+                                                      ),
+                                                  isDark: isDark,
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Live Schedule Tracker
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        30 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildLiveScheduleTimelineTracker(
+                                        isDark,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 28),
+
+                              // CPI Services Grid - ✅ Fees Removed
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        40 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4.0,
+                                            ),
+                                            child: Text(
+                                              "CPI Services",
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .lightPrimaryText,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          GridView.count(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            crossAxisCount: 3,
+                                            crossAxisSpacing: 12,
+                                            mainAxisSpacing: 12,
+                                            childAspectRatio: 1.0,
+                                            children: [
+                                              _buildAnimatedServiceTile(
+                                                "Routine",
+                                                Icons.calendar_today_rounded,
+                                                const Color(0xFF2563EB),
+                                                () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          RoutineView(
+                                                            user: widget.user,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildAnimatedServiceTile(
+                                                "Results",
+                                                Icons.assessment_rounded,
+                                                const Color(0xFF16A34A),
+                                                () {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.resultsLedger,
+                                                    arguments: StudentRouteArgs(
+                                                      user: widget.user,
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildAnimatedServiceTile(
+                                                "Admit Card",
+                                                Icons.badge_rounded,
+                                                const Color(0xFFD97706),
+                                                () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          AdmitCardView(
+                                                            user: widget.user,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              // ✅ Fees REMOVED
+                                              _buildAnimatedServiceTile(
+                                                "Syllabus",
+                                                Icons.menu_book_rounded,
+                                                const Color(0xFF7C3AED),
+                                                () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          SyllabusView(
+                                                            user: widget.user,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildAnimatedServiceTile(
+                                                "Notices",
+                                                Icons.campaign_rounded,
+                                                const Color(0xFFE11D48),
+                                                () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const NoticeBoardScreen(),
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              // Empty tile to maintain grid
+                                              const SizedBox(),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 28),
+
+                              // Recent Notices Carousel
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        50 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildPromoCarouselSection(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 28),
+
+                              // Continuous Assessments
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        60 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4.0,
+                                            ),
+                                            child: Text(
+                                              "Continuous Assessments",
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .lightPrimaryText,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          _buildContinuousAssessmentsLedger(
+                                            isDark,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  // ✅ Refresh all data (called by pull-to-refresh)
+  Future<void> _refreshAll() async {
+    try {
+      await Future.wait([_fetchRealData(), _fetchAssessments()]);
+      // restart listeners to get freshest data
+      _listenToRoutineUpdates();
+      _listenToNotices();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Dashboard refreshed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Refresh failed: $e',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   // ✅ UPDATED: Build Promo Carousel with rotating priority and random order

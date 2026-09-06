@@ -18,6 +18,7 @@ import 'help_support_view.dart';
 import 'alerts_view.dart';
 import 'profile_view.dart';
 import 'teacher_search_delegate.dart';
+import '../../widgets/premium_refresh_indicator.dart';
 
 class TeacherDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -413,7 +414,8 @@ class _TeacherDashboardState extends State<TeacherDashboard>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => HelpSupportView(user: widget.user),
+                              builder: (context) =>
+                                  HelpSupportView(user: widget.user),
                             ),
                           );
                         },
@@ -881,383 +883,399 @@ class _TeacherDashboardState extends State<TeacherDashboard>
             ),
           ],
           Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20.0, 52.0, 20.0, 36.0),
-                    child: SizedBox(
-                      height: 56,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Builder(
-                                  builder: (context) {
-                                    return InkWell(
-                                      onTap: () {
-                                        Scaffold.of(context).openEndDrawer();
-                                      },
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white.withAlpha(20)
-                                              : Colors.black.withAlpha(15),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
+            child: PremiumRefreshIndicator(
+              onRefresh: _refreshAll,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20.0,
+                        52.0,
+                        20.0,
+                        36.0,
+                      ),
+                      child: SizedBox(
+                        height: 56,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Builder(
+                                    builder: (context) {
+                                      return InkWell(
+                                        onTap: () {
+                                          Scaffold.of(context).openEndDrawer();
+                                        },
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: Container(
+                                          width: 46,
+                                          height: 46,
+                                          decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withAlpha(40)
-                                                : Colors.black.withAlpha(20),
+                                                ? Colors.white.withAlpha(20)
+                                                : Colors.black.withAlpha(15),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: isDark
+                                                  ? Colors.white.withAlpha(40)
+                                                  : Colors.black.withAlpha(20),
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.badge_rounded,
+                                            color: Color(0xFF10B981),
+                                            size: 20,
                                           ),
                                         ),
-                                        child: const Icon(
-                                          Icons.badge_rounded,
-                                          color: Color(0xFF10B981),
-                                          size: 20,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          widget.user.name.toUpperCase(),
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.lightPrimaryText,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                            fontFamily: 'Geist',
+                                            letterSpacing: 0.3,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                        const SizedBox(height: 1),
+                                        Text(
+                                          "Faculty • Dept: ${widget.user.department?.shortCode ?? 'CST'}",
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white.withAlpha(140)
+                                                : AppColors.lightSubtitleText,
+                                            fontSize: 11,
+                                            fontFamily: 'Geist',
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Theme Toggle
+                                const ThemeToggleSwitch(),
+                                const SizedBox(width: 8),
+
+                                // Search Button
+                                IconButton(
+                                  onPressed: () {
+                                    showSearch(
+                                      context: context,
+                                      delegate: TeacherSearchDelegate(
+                                        user: widget.user,
                                       ),
                                     );
                                   },
+                                  icon: const Icon(
+                                    Icons.search_rounded,
+                                    color: Color(0xFF10B981),
+                                    size: 18,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withAlpha(12)
+                                        : Colors.black.withAlpha(8),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
+                                  ),
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        widget.user.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white
-                                              : AppColors.lightPrimaryText,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          fontFamily: 'Geist',
-                                          letterSpacing: 0.3,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 8),
+
+                                // Power Off / Logout
+                                IconButton(
+                                  onPressed: () =>
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        AppRoutes.login,
                                       ),
-                                      const SizedBox(height: 1),
-                                      Text(
-                                        "Faculty • Dept: ${widget.user.department?.shortCode ?? 'CST'}",
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white.withAlpha(140)
-                                              : AppColors.lightSubtitleText,
-                                          fontSize: 11,
-                                          fontFamily: 'Geist',
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                                  icon: const Icon(
+                                    Icons.power_settings_new_rounded,
+                                    color: Color(0xFFFFA0A0),
+                                    size: 16,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withAlpha(12)
+                                        : Colors.black.withAlpha(8),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Theme Toggle
-                              const ThemeToggleSwitch(),
-                              const SizedBox(width: 8),
-
-                              // Search Button
-                              IconButton(
-                                onPressed: () {
-                                  showSearch(
-                                    context: context,
-                                    delegate: TeacherSearchDelegate(user: widget.user),
-                                  );
-                                },
-                                icon: const Icon(
-                                  Icons.search_rounded,
-                                  color: Color(0xFF10B981),
-                                  size: 18,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withAlpha(12)
-                                      : Colors.black.withAlpha(8),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              // Power Off / Logout
-                              IconButton(
-                                onPressed: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  AppRoutes.login,
-                                ),
-                                icon: const Icon(
-                                  Icons.power_settings_new_rounded,
-                                  color: Color(0xFFFFA0A0),
-                                  size: 16,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withAlpha(12)
-                                      : Colors.black.withAlpha(8),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(
-                          20.0,
-                          24.0,
-                          20.0,
-                          160.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withAlpha(6)
-                              : AppColors.lightBackground.withAlpha(180),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withAlpha(25)
-                                  : AppColors.lightCardBorder,
-                              width: 1.2,
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Interactive Live Lecture Tracker Card
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      20 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildLiveScheduleTimelineTracker(
-                                      isDark,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Faculty Operations Control Center
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      30 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4.0,
-                                          ),
-                                          child: Text(
-                                            "Faculty Control Center",
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppColors.lightPrimaryText,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Geist',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        GridView.count(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          crossAxisCount: 2,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                          childAspectRatio: 1.35,
-                                          children: [
-                                            _buildActionTile(
-                                              "Record Attendance",
-                                              Icons.fact_check_rounded,
-                                              const Color(0xFF10B981),
-                                              () {
-                                                // Using router with proper arguments
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes.attendanceLogger,
-                                                  arguments:
-                                                      AttendanceLoggerArgs(
-                                                        teacher: widget.user,
-                                                        subjectCode: '66641',
-                                                        subjectName:
-                                                            'Data Structures',
-                                                        className: 'CMT-4th-B2',
-                                                        semester: 4,
-                                                        department: 'CST',
-                                                      ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildActionTile(
-                                              "Continuous Assessment",
-                                              Icons
-                                                  .drive_file_rename_outline_rounded,
-                                              const Color(0xFF0284C7),
-                                              () {
-                                                // ✅ FIXED: Using the new Continuous Assessment route
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes
-                                                      .continuousAssessment,
-                                                  arguments:
-                                                      ContinuousAssessmentArgs(
-                                                        teacher: widget.user,
-                                                        className: 'CMT-4th-B2',
-                                                        subjectCode: '66641',
-                                                        subjectName:
-                                                            'Data Structures',
-                                                        semester: 4,
-                                                        department: 'CST',
-                                                      ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildActionTile(
-                                              "Syllabus & Topics",
-                                              Icons.menu_book_rounded,
-                                              const Color(0xFF8B5CF6),
-                                              () {
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes.teacherSyllabus,
-                                                  arguments: TeacherRouteArgs(
-                                                    user: widget.user,
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildActionTile(
-                                              "Post Class Notice",
-                                              Icons.campaign_rounded,
-                                              const Color(0xFFF59E0B),
-                                              () {
-                                                Navigator.pushNamed(
-                                                  context,
-                                                  AppRoutes.teacherNotice,
-                                                  arguments: TeacherRouteArgs(
-                                                    user: widget.user,
-                                                  ),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // QUICK STATS BANNER
-                            _buildQuickStatsBanner(isDark),
-                            const SizedBox(height: 24),
-
-                            // Faculty Course Assignments & Syllabus Tracking
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      40 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4.0,
-                                          ),
-                                          child: Text(
-                                            "Assigned Courses & Syllabus",
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppColors.lightPrimaryText,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Geist',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        _buildFacultyManagementGrid(isDark),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(
+                            20.0,
+                            24.0,
+                            20.0,
+                            160.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(6)
+                                : AppColors.lightBackground.withAlpha(180),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: isDark
+                                    ? Colors.white.withAlpha(25)
+                                    : AppColors.lightCardBorder,
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Interactive Live Lecture Tracker Card
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        20 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildLiveScheduleTimelineTracker(
+                                        isDark,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Faculty Operations Control Center
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        30 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4.0,
+                                            ),
+                                            child: Text(
+                                              "Faculty Control Center",
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .lightPrimaryText,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          GridView.count(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            crossAxisCount: 2,
+                                            crossAxisSpacing: 12,
+                                            mainAxisSpacing: 12,
+                                            childAspectRatio: 1.35,
+                                            children: [
+                                              _buildActionTile(
+                                                "Record Attendance",
+                                                Icons.fact_check_rounded,
+                                                const Color(0xFF10B981),
+                                                () {
+                                                  // Using router with proper arguments
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.attendanceLogger,
+                                                    arguments:
+                                                        AttendanceLoggerArgs(
+                                                          teacher: widget.user,
+                                                          subjectCode: '66641',
+                                                          subjectName:
+                                                              'Data Structures',
+                                                          className:
+                                                              'CMT-4th-B2',
+                                                          semester: 4,
+                                                          department: 'CST',
+                                                        ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Continuous Assessment",
+                                                Icons
+                                                    .drive_file_rename_outline_rounded,
+                                                const Color(0xFF0284C7),
+                                                () {
+                                                  // ✅ FIXED: Using the new Continuous Assessment route
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes
+                                                        .continuousAssessment,
+                                                    arguments:
+                                                        ContinuousAssessmentArgs(
+                                                          teacher: widget.user,
+                                                          className:
+                                                              'CMT-4th-B2',
+                                                          subjectCode: '66641',
+                                                          subjectName:
+                                                              'Data Structures',
+                                                          semester: 4,
+                                                          department: 'CST',
+                                                        ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Syllabus & Topics",
+                                                Icons.menu_book_rounded,
+                                                const Color(0xFF8B5CF6),
+                                                () {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.teacherSyllabus,
+                                                    arguments: TeacherRouteArgs(
+                                                      user: widget.user,
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Post Class Notice",
+                                                Icons.campaign_rounded,
+                                                const Color(0xFFF59E0B),
+                                                () {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.teacherNotice,
+                                                    arguments: TeacherRouteArgs(
+                                                      user: widget.user,
+                                                    ),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // QUICK STATS BANNER
+                              _buildQuickStatsBanner(isDark),
+                              const SizedBox(height: 24),
+
+                              // Faculty Course Assignments & Syllabus Tracking
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        40 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4.0,
+                                            ),
+                                            child: Text(
+                                              "Assigned Courses & Syllabus",
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .lightPrimaryText,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          _buildFacultyManagementGrid(isDark),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1933,6 +1951,68 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         ),
       ),
     );
+  }
+
+  // ✅ Refresh all data (called by pull-to-refresh)
+  Future<void> _refreshAll() async {
+    try {
+      setState(() {});
+      // Restart the entry animation to give a refreshed feel
+      _staggerController.forward(from: 0);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Dashboard refreshed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Refresh failed: $e',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
 

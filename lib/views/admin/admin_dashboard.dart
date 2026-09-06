@@ -21,6 +21,7 @@ import '../../core/colors.dart';
 import '../../models/user_role.dart' as role_model;
 import '../../widgets/animated_background_painter.dart' hide UserRole;
 import '../components/admin_operations_sheets.dart';
+import '../../widgets/premium_refresh_indicator.dart';
 
 class AdminDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -915,443 +916,462 @@ class _AdminDashboardState extends State<AdminDashboard>
             ),
           ],
           Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20.0, 52.0, 20.0, 36.0),
-                    child: SizedBox(
-                      height: 56,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Builder(
-                                  builder: (context) {
-                                    return InkWell(
-                                      onTap: () {
-                                        Scaffold.of(context).openEndDrawer();
-                                      },
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white.withAlpha(20)
-                                              : Colors.black.withAlpha(15),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
+            child: PremiumRefreshIndicator(
+              onRefresh: _refreshAll,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20.0,
+                        52.0,
+                        20.0,
+                        36.0,
+                      ),
+                      child: SizedBox(
+                        height: 56,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Builder(
+                                    builder: (context) {
+                                      return InkWell(
+                                        onTap: () {
+                                          Scaffold.of(context).openEndDrawer();
+                                        },
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: Container(
+                                          width: 46,
+                                          height: 46,
+                                          decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withAlpha(40)
-                                                : Colors.black.withAlpha(20),
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.admin_panel_settings_rounded,
-                                          color: Color(0xFFF59E0B),
-                                          size: 20,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        widget.user.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white
-                                              : AppColors.lightPrimaryText,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          fontFamily: 'Geist',
-                                          letterSpacing: 0.3,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 1),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          AnimatedBuilder(
-                                            animation: _pulseController,
-                                            builder: (context, child) {
-                                              return Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: BoxDecoration(
-                                                  color: _isEmergencyModeActive
-                                                      ? const Color(0xFFEF4444)
-                                                      : const Color(0xFFF59E0B),
-                                                  shape: BoxShape.circle,
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color:
-                                                          (_isEmergencyModeActive
-                                                                  ? const Color(
-                                                                      0xFFEF4444,
-                                                                    )
-                                                                  : const Color(
-                                                                      0xFFF59E0B,
-                                                                    ))
-                                                              .withAlpha(
-                                                                (_pulseController
-                                                                            .value *
-                                                                        255)
-                                                                    .toInt(),
-                                                              ),
-                                                      blurRadius:
-                                                          8 *
-                                                          _pulseController
-                                                              .value,
-                                                      spreadRadius:
-                                                          2 *
-                                                          _pulseController
-                                                              .value,
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Flexible(
-                                            child: Text(
-                                              _isEmergencyModeActive
-                                                  ? "EMERGENCY MODE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}"
-                                                  : "ADMIN ONLINE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}",
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                              style: TextStyle(
-                                                color: _isEmergencyModeActive
-                                                    ? const Color(0xFFEF4444)
-                                                    : const Color(0xFFF59E0B),
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: 'Geist',
-                                              ),
+                                                ? Colors.white.withAlpha(20)
+                                                : Colors.black.withAlpha(15),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: isDark
+                                                  ? Colors.white.withAlpha(40)
+                                                  : Colors.black.withAlpha(20),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ],
+                                          child: const Icon(
+                                            Icons.admin_panel_settings_rounded,
+                                            color: Color(0xFFF59E0B),
+                                            size: 20,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Theme Toggle
-                              const ThemeToggleSwitch(),
-                              const SizedBox(width: 8),
-
-                              // Search Button
-                              IconButton(
-                                onPressed: () => _openAdminSearchPage(context),
-                                icon: const Icon(
-                                  Icons.search_rounded,
-                                  color: Color(0xFFF59E0B),
-                                  size: 18,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withAlpha(12)
-                                      : Colors.black.withAlpha(8),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              // Power Off / Logout
-                              IconButton(
-                                onPressed: () => Navigator.pushReplacementNamed(
-                                  context,
-                                  AppRoutes.login,
-                                ),
-                                icon: const Icon(
-                                  Icons.power_settings_new_rounded,
-                                  color: Color(0xFFFFA0A0),
-                                  size: 16,
-                                ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? Colors.white.withAlpha(12)
-                                      : Colors.black.withAlpha(8),
-                                  padding: const EdgeInsets.all(8),
-                                  minimumSize: const Size(36, 36),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Main Content
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(
-                          20.0,
-                          24.0,
-                          20.0,
-                          160.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withAlpha(6)
-                              : AppColors.lightBackground.withAlpha(180),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                          border: Border(
-                            top: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withAlpha(25)
-                                  : AppColors.lightCardBorder,
-                              width: 1.2,
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Metrics Grid
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      20 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildMetricsGrid(isDark),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Admin Services
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      30 * (1 - _staggerAnimation.value),
-                                    ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 4.0,
+                                        Text(
+                                          widget.user.name.toUpperCase(),
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.lightPrimaryText,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w900,
+                                            fontFamily: 'Geist',
+                                            letterSpacing: 0.3,
                                           ),
-                                          child: Text(
-                                            "Admin Services",
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppColors.lightPrimaryText,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'Geist',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        const SizedBox(height: 14),
-                                        GridView.count(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          crossAxisCount: 2,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                          childAspectRatio: 1.35,
+                                        const SizedBox(height: 1),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            _buildActionTile(
-                                              "Routine Override",
-                                              Icons.calendar_today_rounded,
-                                              const Color(0xFF2563EB),
-                                              () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      const RoutineOverrideSheet(),
+                                            AnimatedBuilder(
+                                              animation: _pulseController,
+                                              builder: (context, child) {
+                                                return Container(
+                                                  width: 7,
+                                                  height: 7,
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        _isEmergencyModeActive
+                                                        ? const Color(
+                                                            0xFFEF4444,
+                                                          )
+                                                        : const Color(
+                                                            0xFFF59E0B,
+                                                          ),
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color:
+                                                            (_isEmergencyModeActive
+                                                                    ? const Color(
+                                                                        0xFFEF4444,
+                                                                      )
+                                                                    : const Color(
+                                                                        0xFFF59E0B,
+                                                                      ))
+                                                                .withAlpha(
+                                                                  (_pulseController
+                                                                              .value *
+                                                                          255)
+                                                                      .toInt(),
+                                                                ),
+                                                        blurRadius:
+                                                            8 *
+                                                            _pulseController
+                                                                .value,
+                                                        spreadRadius:
+                                                            2 *
+                                                            _pulseController
+                                                                .value,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 );
                                               },
-                                              isDark,
                                             ),
-                                            _buildActionTile(
-                                              "Assessment Marks",
-                                              Icons.assessment_rounded,
-                                              const Color(0xFF7B61FF),
-                                              () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      const AssessmentMarksSheet(),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildActionTile(
-                                              "Attendance Logger",
-                                              Icons.fact_check_rounded,
-                                              const Color(0xFF16A34A),
-                                              () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      const AttendanceLoggerSheet(),
-                                                );
-                                              },
-                                              isDark,
-                                            ),
-                                            _buildActionTile(
-                                              "Admit Clearance",
-                                              Icons.badge_rounded,
-                                              const Color(0xFFD97706),
-                                              () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  builder: (context) =>
-                                                      const AdmitClearanceSheet(),
-                                                );
-                                              },
-                                              isDark,
+                                            const SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                _isEmergencyModeActive
+                                                    ? "EMERGENCY MODE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}"
+                                                    : "ADMIN ONLINE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}",
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                                style: TextStyle(
+                                                  color: _isEmergencyModeActive
+                                                      ? const Color(0xFFEF4444)
+                                                      : const Color(0xFFF59E0B),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'Geist',
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                );
-                              },
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 24),
+                            // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Theme Toggle
+                                const ThemeToggleSwitch(),
+                                const SizedBox(width: 8),
 
-                            // Emergency Banner
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      35 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildEmergencyBannerToggle(isDark),
+                                // Search Button
+                                IconButton(
+                                  onPressed: () =>
+                                      _openAdminSearchPage(context),
+                                  icon: const Icon(
+                                    Icons.search_rounded,
+                                    color: Color(0xFFF59E0B),
+                                    size: 18,
                                   ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withAlpha(12)
+                                        : Colors.black.withAlpha(8),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
 
-                            // Semester Selector
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      40 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildSemesterChipsBlock(isDark),
+                                // Power Off / Logout
+                                IconButton(
+                                  onPressed: () =>
+                                      Navigator.pushReplacementNamed(
+                                        context,
+                                        AppRoutes.login,
+                                      ),
+                                  icon: const Icon(
+                                    Icons.power_settings_new_rounded,
+                                    color: Color(0xFFFFA0A0),
+                                    size: 16,
                                   ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Live System Logs
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      45 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildLiveSystemTerminal(isDark),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDark
+                                        ? Colors.white.withAlpha(12)
+                                        : Colors.black.withAlpha(8),
+                                    padding: const EdgeInsets.all(8),
+                                    minimumSize: const Size(36, 36),
                                   ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-
-                            // Department Matrix
-                            AnimatedBuilder(
-                              animation: _staggerAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _staggerAnimation.value,
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                      0,
-                                      50 * (1 - _staggerAnimation.value),
-                                    ),
-                                    child: _buildDepartmentSection(isDark),
-                                  ),
-                                );
-                              },
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ),
-                ],
+
+                    // Main Content
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(
+                            20.0,
+                            24.0,
+                            20.0,
+                            160.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(6)
+                                : AppColors.lightBackground.withAlpha(180),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: isDark
+                                    ? Colors.white.withAlpha(25)
+                                    : AppColors.lightCardBorder,
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Metrics Grid
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        20 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildMetricsGrid(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Admin Services
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        30 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 4.0,
+                                            ),
+                                            child: Text(
+                                              "Admin Services",
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : AppColors
+                                                          .lightPrimaryText,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Geist',
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          GridView.count(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            crossAxisCount: 2,
+                                            crossAxisSpacing: 12,
+                                            mainAxisSpacing: 12,
+                                            childAspectRatio: 1.35,
+                                            children: [
+                                              _buildActionTile(
+                                                "Routine Override",
+                                                Icons.calendar_today_rounded,
+                                                const Color(0xFF2563EB),
+                                                () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (context) =>
+                                                        const RoutineOverrideSheet(),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Assessment Marks",
+                                                Icons.assessment_rounded,
+                                                const Color(0xFF7B61FF),
+                                                () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (context) =>
+                                                        const AssessmentMarksSheet(),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Attendance Logger",
+                                                Icons.fact_check_rounded,
+                                                const Color(0xFF16A34A),
+                                                () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (context) =>
+                                                        const AttendanceLoggerSheet(),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                              _buildActionTile(
+                                                "Admit Clearance",
+                                                Icons.badge_rounded,
+                                                const Color(0xFFD97706),
+                                                () {
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.transparent,
+                                                    builder: (context) =>
+                                                        const AdmitClearanceSheet(),
+                                                  );
+                                                },
+                                                isDark,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Emergency Banner
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        35 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildEmergencyBannerToggle(
+                                        isDark,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Semester Selector
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        40 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildSemesterChipsBlock(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Live System Logs
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        45 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildLiveSystemTerminal(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Department Matrix
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        50 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildDepartmentSection(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1929,6 +1949,68 @@ class _AdminDashboardState extends State<AdminDashboard>
         ),
       ],
     );
+  }
+
+  // ✅ Refresh all data (called by pull-to-refresh)
+  Future<void> _refreshAll() async {
+    try {
+      setState(() {});
+      // Restart the entry animation to give a refreshed feel
+      _staggerController.forward(from: 0);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Dashboard refreshed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Refresh failed: $e',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
 
