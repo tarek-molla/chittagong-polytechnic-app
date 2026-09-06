@@ -122,8 +122,8 @@ class Student {
 
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
-      roll: json['roll'] ?? json['student_roll'] ?? '',
-      name: json['name'] ?? json['student_name'] ?? '',
+      roll: json['roll_number'] ?? json['roll'] ?? '',
+      name: json['student_name'] ?? json['name'] ?? '',
       email: json['email'],
     );
   }
@@ -137,20 +137,26 @@ class AttendanceService {
   /// Get students for a class
   Future<List<Student>> getStudents(String className, int semester) async {
     try {
+      print('📚 Fetching students for class: $className, semester: $semester');
+
       final response = await _supabase
-          .from('students')
+          .from('students_login')
           .select()
           .eq('class_name', className)
           .eq('semester', semester)
           .eq('is_active', true)
-          .order('roll', ascending: true);
+          .order('roll_number', ascending: true);
+
+      print('📊 Found ${response.length} students');
 
       if (response.isEmpty) {
+        print('⚠️ No students found, using sample data');
         return _getSampleStudents();
       }
 
       return (response as List).map((json) => Student.fromJson(json)).toList();
     } catch (e) {
+      print('❌ Error fetching students: $e');
       return _getSampleStudents();
     }
   }

@@ -6,6 +6,22 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/assessment_model.dart';
 
+class Student {
+  final String roll;
+  final String name;
+  final String? email;
+
+  Student({required this.roll, required this.name, this.email});
+
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      roll: json['roll_number'] ?? json['roll'] ?? '',
+      name: json['student_name'] ?? json['name'] ?? '',
+      email: json['email'],
+    );
+  }
+}
+
 class AssessmentService {
   final SupabaseClient _supabase;
 
@@ -27,6 +43,44 @@ class AssessmentService {
       );
       yield updated;
     }
+  }
+
+  /// Get students for a class
+  Future<List<Student>> getStudents(String className, int semester) async {
+    try {
+      print('📚 Fetching students for class: $className, semester: $semester');
+
+      final response = await _supabase
+          .from('students_login')
+          .select()
+          .eq('class_name', className)
+          .eq('semester', semester)
+          .eq('is_active', true)
+          .order('roll_number', ascending: true);
+
+      print('📊 Found ${response.length} students');
+
+      if (response.isEmpty) {
+        print('⚠️ No students found, using sample data');
+        return _getSampleStudents();
+      }
+
+      return (response as List).map((json) => Student.fromJson(json)).toList();
+    } catch (e) {
+      print('❌ Error fetching students: $e');
+      return _getSampleStudents();
+    }
+  }
+
+  List<Student> _getSampleStudents() {
+    return [
+      Student(roll: 'CMT-508401', name: 'Mohammed Akash'),
+      Student(roll: 'CMT-508402', name: 'Nasrin Akter'),
+      Student(roll: 'CMT-508403', name: 'Sumaiya Khan'),
+      Student(roll: 'CMT-508412', name: 'Tarek Molla'),
+      Student(roll: 'CMT-508415', name: 'Ahsan Habib'),
+      Student(roll: 'CMT-508418', name: 'Farhana Yeasmin'),
+    ];
   }
 
   /// Get registered students for class/semester from students table
@@ -81,51 +135,67 @@ class AssessmentService {
     }
   }
 
-  /// Fetch or create assessment record
+  /// Get or create assessment for a student
   Future<AssessmentModel?> getOrCreateAssessment(
-    String roll,
-    String name,
+    String studentRoll,
+    String studentName,
     String subjectCode,
     String subjectName,
     String className,
     int semester,
     String department,
     String teacherName, {
-    required String assessmentName,
-    required String assessmentType,
-    required double totalMarks,
+    String assessmentName = 'CT-1',
+    String assessmentType = 'Theory',
+    double totalMarks = 30,
   }) async {
     try {
-      final existing = await _supabase
+      print('📝 Creating assessment for: $studentRoll - $assessmentName');
+
+      // Check if assessment exists
+      final response = await _supabase
           .from('continuous_assessment')
           .select()
-          .eq('roll_number', roll)
-          .eq('semester', semester)
+          .eq('roll_number', studentRoll)
+          .eq('subject_code', subjectCode)
+          .eq('assessment_name', assessmentName)
           .eq('assessment_type', assessmentType)
           .maybeSingle();
 
-      if (existing != null) {
-        return AssessmentModel.fromJson(existing);
+      if (response != null) {
+        print('✅ Assessment already exists for $studentRoll');
+        return AssessmentModel.fromJson(response);
       }
 
-      final inserted = await _supabase
+      // Create new assessment
+      final newEntry = {
+        'roll_number': studentRoll,
+        'student_name': studentName,
+        'department': department,
+        'semester': semester,
+        'subject_name': subjectName,
+        'subject_code': subjectCode,
+        'class_name': className,
+        'assessment_type': assessmentType,
+        'assessment_name': assessmentName,
+        'obtained_marks': 0,
+        'total_marks': totalMarks,
+        'is_active': true,
+        'teacher_name': teacherName,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      final insertResponse = await _supabase
           .from('continuous_assessment')
-          .insert({
-            'roll_number': roll,
-            'student_name': name,
-            'subject_name': subjectName,
-            'semester': semester,
-            'department': department,
-            'assessment_type': assessmentType,
-            'obtained_marks': 0.0,
-            'created_at': DateTime.now().toIso8601String(),
-          })
+          .insert(newEntry)
           .select()
           .single();
 
-      return AssessmentModel.fromJson(inserted);
+      print('✅ Created assessment for $studentRoll');
+      return AssessmentModel.fromJson(insertResponse);
     } catch (e) {
-      print('❌ Error in getOrCreateAssessment: $e');
+      print('❌ Error creating assessment: $e');
       return null;
     }
   }
