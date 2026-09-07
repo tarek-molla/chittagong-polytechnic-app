@@ -13,8 +13,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/supabase_service.dart';
+import '../../services/admin_service.dart';
 import '../../models/user.dart' as user_model;
-import '../../core/router.dart';
+import '../../core/router.dart' show AppRoutes, AdminRouteArgs;
 import '../../core/theme_provider.dart';
 import '../../../widgets/theme_toggle_switch.dart';
 import '../../core/colors.dart';
@@ -22,6 +23,13 @@ import '../../models/user_role.dart' as role_model;
 import '../../widgets/animated_background_painter.dart' hide UserRole;
 import '../components/admin_operations_sheets.dart';
 import '../../widgets/premium_refresh_indicator.dart';
+import '../../widgets/admin_dialogs.dart';
+import 'teacher_management_view.dart';
+import 'student_management_view.dart';
+import 'result_management_view.dart';
+import 'notice_management_view.dart';
+import 'admission_triage_view.dart';
+import 'routine_scheduler_view.dart';
 
 class AdminDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -261,7 +269,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   ),
                                   decoration: InputDecoration(
                                     hintText:
-                                        "Search students, faculty, departments...",
+                                        "Search students, faculty, departments..."
                                     hintStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white38
@@ -1224,13 +1232,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                                                 Icons.calendar_today_rounded,
                                                 const Color(0xFF2563EB),
                                                 () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (context) =>
-                                                        const RoutineOverrideSheet(),
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.routineScheduler,
+                                                    arguments: AdminRouteArgs(
+                                                      user: widget.user,
+                                                    ),
                                                   );
                                                 },
                                                 isDark,
@@ -1240,13 +1247,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                                                 Icons.assessment_rounded,
                                                 const Color(0xFF7B61FF),
                                                 () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (context) =>
-                                                        const AssessmentMarksSheet(),
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.resultManagement,
+                                                    arguments: AdminRouteArgs(
+                                                      user: widget.user,
+                                                    ),
                                                   );
                                                 },
                                                 isDark,
@@ -1272,13 +1278,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                                                 Icons.badge_rounded,
                                                 const Color(0xFFD97706),
                                                 () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (context) =>
-                                                        const AdmitClearanceSheet(),
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    AppRoutes.admissionTriage,
+                                                    arguments: AdminRouteArgs(
+                                                      user: widget.user,
+                                                    ),
                                                   );
                                                 },
                                                 isDark,
@@ -1383,46 +1388,61 @@ class _AdminDashboardState extends State<AdminDashboard>
   // ==================== BUILD METHODS ====================
 
   Widget _buildMetricsGrid(bool isDark) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 12) / 2;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _buildMetricGlassCard(
-              "Total Students",
-              "2,450",
-              Icons.groups_rounded,
-              const Color(0xFF00E5FF),
-              cardWidth,
-              isDark,
-            ),
-            _buildMetricGlassCard(
-              "Active Faculty",
-              "84",
-              Icons.badge_rounded,
-              const Color(0xFF10B981),
-              cardWidth,
-              isDark,
-            ),
-            _buildMetricGlassCard(
-              "Pending Intake",
-              "18",
-              Icons.pending_actions_rounded,
-              const Color(0xFFF59E0B),
-              cardWidth,
-              isDark,
-            ),
-            _buildMetricGlassCard(
-              "Live Classrooms",
-              "32",
-              Icons.meeting_room_rounded,
-              const Color(0xFF7B61FF),
-              cardWidth,
-              isDark,
-            ),
-          ],
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: AdminService(
+        SupabaseService.client,
+      ).getDashboardStatsStream('CST'),
+      builder: (context, snapshot) {
+        final stats =
+            snapshot.data ??
+            {
+              'totalStudents': 0,
+              'activeFaculty': 0,
+              'pendingAdmissions': 0,
+              'liveClassrooms': 0,
+            };
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _buildMetricGlassCard(
+                  "Total Students",
+                  "${stats['totalStudents'] ?? 0}",
+                  Icons.groups_rounded,
+                  const Color(0xFF00E5FF),
+                  cardWidth,
+                  isDark,
+                ),
+                _buildMetricGlassCard(
+                  "Active Faculty",
+                  "${stats['activeFaculty'] ?? 0}",
+                  Icons.badge_rounded,
+                  const Color(0xFF10B981),
+                  cardWidth,
+                  isDark,
+                ),
+                _buildMetricGlassCard(
+                  "Pending Intake",
+                  "${stats['pendingAdmissions'] ?? 0}",
+                  Icons.pending_actions_rounded,
+                  const Color(0xFFF59E0B),
+                  cardWidth,
+                  isDark,
+                ),
+                _buildMetricGlassCard(
+                  "Live Classrooms",
+                  "${stats['liveClassrooms'] ?? 0}",
+                  Icons.meeting_room_rounded,
+                  const Color(0xFF7B61FF),
+                  cardWidth,
+                  isDark,
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1747,94 +1767,144 @@ class _AdminDashboardState extends State<AdminDashboard>
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4.0),
-          child: Text(
-            "Live System Dispatch Logs",
-            style: TextStyle(
-              color: isDark ? Colors.white : AppColors.lightPrimaryText,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Geist',
-              letterSpacing: 0.5,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Live System Dispatch Logs",
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Geist',
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withAlpha(8)
-                    : Colors.white.withAlpha(200),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withAlpha(12)
-                      : AppColors.lightCardBorder,
+        StreamBuilder<List<Map<String, dynamic>>>(
+          stream: AdminService(SupabaseService.client).getRecentActivity(),
+          builder: (context, snapshot) {
+            final activities = snapshot.data ?? [];
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withAlpha(8)
+                        : Colors.white.withAlpha(200),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withAlpha(12)
+                          : AppColors.lightCardBorder,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: activities.isEmpty
+                        ? [
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.0),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                child: Text(
+                                  "No recent activity",
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white.withAlpha(125)
+                                        : Colors.black54,
+                                    fontSize: 12,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                              ),
+                          ]
+                        : List.generate(activities.length.clamp(0, 5), (idx) {
+                            final a = activities[idx];
+                            final time = a['time'] != null
+                                ? _formatTime(a['time'])
+                                : '--:--';
+                            final action = (a['type'] ?? 'event')
+                                .toString()
+                                .toUpperCase();
+                            final details = a['title'] ?? 'Activity';
+                            final color = Color(
+                              a['color'] as int? ?? 0xFFF59E0B,
+                            );
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                bottom:
+                                    idx < (activities.length.clamp(0, 5)) - 1
+                                    ? 8
+                                    : 0,
+                              ),
+                              child: _TerminalLogRow(
+                                time: time,
+                                action: action,
+                                details: details,
+                                color: color,
+                              ),
+                            );
+                          }),
+                  ),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  _TerminalLogRow(
-                    time: "15:24",
-                    action: "NOTICE_BROADCAST",
-                    details: "Midterm Exam Routine Published for CST 6th Sem",
-                    color: Color(0xFF00E5FF),
-                  ),
-                  SizedBox(height: 8),
-                  _TerminalLogRow(
-                    time: "14:10",
-                    action: "ROOM_SWAP",
-                    details: "Class CST-601 moved to Rm 402 for Lab Slot",
-                    color: Color(0xFFF59E0B),
-                  ),
-                  SizedBox(height: 8),
-                  _TerminalLogRow(
-                    time: "12:05",
-                    action: "MARKS_INGEST",
-                    details: "24 Assessment Records updated by Admin",
-                    color: Color(0xFF10B981),
-                  ),
-                ],
-              ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
   }
 
+  String _formatTime(dynamic iso) {
+    try {
+      final dt = DateTime.parse(iso.toString()).toLocal();
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
+      return '$hh:$mm';
+    } catch (_) {
+      return '--:--';
+    }
+  }
+
   Widget _buildDepartmentSection(bool isDark) {
-    final depts = [
-      _DeptData(
-        name: "Computer Science & Tech",
-        short: "CST",
-        students: 480,
-        health: 0.98,
-      ),
-      _DeptData(
-        name: "Electronics Tech",
-        short: "ET",
-        students: 310,
-        health: 0.95,
-      ),
-      _DeptData(
-        name: "Civil Tech",
-        short: "CIVIL",
-        students: 400,
-        health: 0.92,
-      ),
-      _DeptData(
-        name: "Mechanical Tech",
-        short: "MECH",
-        students: 360,
-        health: 0.94,
-      ),
-    ];
+    // Department display names
+    final deptNames = {
+      'CST': "Computer Science & Tech",
+      'CIVIL': "Civil Tech",
+      'EE': "Electrical Tech",
+      'ME': "Mechanical Tech",
+      'ECT': "Electronics Tech",
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1853,97 +1923,161 @@ class _AdminDashboardState extends State<AdminDashboard>
           ),
         ),
         const SizedBox(height: 12),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: depts.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final dept = depts[index];
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withAlpha(8)
-                        : Colors.white.withAlpha(200),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
+        StreamBuilder<Map<String, int>>(
+          stream: AdminService(
+            SupabaseService.client,
+          ).getDepartmentStatsStream(),
+          builder: (context, snapshot) {
+            final stats = snapshot.data ?? {};
+            final depts = stats.entries.toList();
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
+            if (depts.isEmpty) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withAlpha(12)
-                          : AppColors.lightCardBorder,
+                          ? Colors.white.withAlpha(8)
+                          : Colors.white.withAlpha(200),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withAlpha(12)
+                            : AppColors.lightCardBorder,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withAlpha(40),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFF59E0B).withAlpha(80),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            dept.short,
-                            style: const TextStyle(
-                              color: Color(0xFFF59E0B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              fontFamily: 'Geist',
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              dept.name,
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white
-                                    : AppColors.lightPrimaryText,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Geist',
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              "Enrolled Students: ${dept.students}",
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white.withAlpha(125)
-                                    : Colors.black54,
-                                fontSize: 11,
-                                fontFamily: 'Geist',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        "${(dept.health * 100).toInt()}% Active",
-                        style: const TextStyle(
-                          color: Color(0xFF10B981),
-                          fontWeight: FontWeight.bold,
+                    child: Center(
+                      child: Text(
+                        "No department data available",
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white.withAlpha(125)
+                              : Colors.black54,
                           fontSize: 12,
                           fontFamily: 'Geist',
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              );
+            }
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: depts.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final entry = depts[index];
+                final short = entry.key;
+                final count = entry.value;
+                final name = deptNames[short] ?? short;
+                // Calculate health based on student count (mock logic)
+                final health = count > 0 ? (count / 500).clamp(0.7, 1.0) : 0.0;
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withAlpha(8)
+                            : Colors.white.withAlpha(200),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withAlpha(12)
+                              : AppColors.lightCardBorder,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withAlpha(40),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFF59E0B).withAlpha(80),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                short,
+                                style: const TextStyle(
+                                  color: Color(0xFFF59E0B),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  fontFamily: 'Geist',
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Enrolled Students: $count",
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white.withAlpha(125)
+                                        : Colors.black54,
+                                    fontSize: 11,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            "${(health * 100).toInt()}% Active",
+                            style: TextStyle(
+                              color: health >= 0.9
+                                  ? const Color(0xFF10B981)
+                                  : health >= 0.7
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFEF4444),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              fontFamily: 'Geist',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             );
           },
         ),
@@ -2077,20 +2211,9 @@ class _TerminalLogRow extends StatelessWidget {
   }
 }
 
-// ── DEPT DATA CLASS ─────────────────────────────────────────────────────────
-class _DeptData {
-  final String name;
-  final String short;
-  final int students;
-  final double health;
-
-  _DeptData({
-    required this.name,
-    required this.short,
-    required this.students,
-    required this.health,
-  });
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// File is complete — unused _DeptData removed
+// ══════════════════════════════════════════════════════════════════════════════
 
 // ── INTERACTIVE SCALE BUTTON WIDGET ───────────────────────────────────────
 class _InteractiveScaleButton extends StatefulWidget {

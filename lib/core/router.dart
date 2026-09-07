@@ -19,6 +19,10 @@ import '../views/teacher/marks_uploader_view.dart';
 import '../views/admin/admin_dashboard.dart';
 import '../views/admin/admission_triage_view.dart';
 import '../views/admin/routine_scheduler_view.dart';
+import '../views/admin/teacher_management_view.dart';
+import '../views/admin/student_management_view.dart';
+import '../views/admin/result_management_view.dart';
+import '../views/admin/notice_management_view.dart';
 import '../views/teacher/continuous_assessment_view.dart';
 import '../views/teacher/teacher_syllabus_view.dart';
 import '../views/teacher/teacher_notice_view.dart';
@@ -51,6 +55,10 @@ class AppRoutes {
   static const String teacherProfile = '/teacher/profile';
   static const String aboutInstitution = '/student/about-institution';
   static const String teacherPrivacyPolicy = '/teacher/privacy-policy';
+  static const String teacherManagement = '/teacher/management';
+  static const String studentManagement = '/student/management';
+  static const String resultManagement = '/result/management';
+  static const String noticeManagement = '/notice/management';
 }
 
 class StudentRouteArgs {
@@ -283,6 +291,34 @@ class AppRouter {
         return _slideRoute(
           settings: settings,
           builder: (_) => RoutineSchedulerView(user: args.user),
+        );
+
+      case AppRoutes.teacherManagement:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => TeacherManagementView(user: args.user),
+        );
+
+      case AppRoutes.studentManagement:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => StudentManagementView(user: args.user),
+        );
+
+      case AppRoutes.resultManagement:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => ResultManagementView(user: args.user),
+        );
+
+      case AppRoutes.noticeManagement:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => NoticeManagementView(user: args.user),
         );
 
       default:

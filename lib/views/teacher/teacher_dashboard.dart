@@ -1441,9 +1441,17 @@ class _TeacherDashboardState extends State<TeacherDashboard>
             .order('start_time', ascending: true)
             .limit(1);
 
+        final String teacherName = widget.user.name;
+        final String activeTeacherName = currentClass.isNotEmpty
+            ? (currentClass[0]['teacher_name']?.toString().trim().isNotEmpty ==
+                      true
+                  ? currentClass[0]['teacher_name']
+                  : teacherName)
+            : teacherName;
+
         yield {
           'current': currentClass.isNotEmpty
-              ? '${currentClass[0]['subject_name']} • ${currentClass[0]['class_name']} (Rm ${currentClass[0]['room']})'
+              ? '${currentClass[0]['subject_name']} • $activeTeacherName (Rm ${currentClass[0]['room']})'
               : 'No Active Lecture',
           'next': nextClass.isNotEmpty
               ? '${nextClass[0]['subject_name']} at ${nextClass[0]['start_time']}'
@@ -1514,42 +1522,81 @@ class _TeacherDashboardState extends State<TeacherDashboard>
       try {
         final client = SupabaseService.client;
         final department = widget.user.department?.shortCode ?? 'CST';
+        final teacherName = widget.user.name;
+        final semester = widget.user.semester ?? 4;
 
-        final students = await client
-            .from('students')
-            .select()
-            .eq('class_name', 'CMT-4th-B2');
-        final studentCount = students.length;
+        // Get the teacher's assigned classes from routine
+        final assignedClasses = await client
+            .from('routine')
+            .select('class_name')
+            .eq('department', department)
+            .eq('teacher_name', teacherName)
+            .eq('is_active', true);
 
-        final attendance = await client
-            .from('attendance_daily')
-            .select('status')
-            .eq('date', DateTime.now().toIso8601String().split('T').first)
-            .eq('department', department);
+        final classNames = assignedClasses
+            .map((c) => c['class_name'] as String)
+            .toSet()
+            .toList();
 
-        final present = attendance
-            .where((a) => a['status'] == 'Present')
-            .length;
-        final total = attendance.length;
+        int totalStudents = 0;
+        if (classNames.isNotEmpty) {
+          // Count students for all assigned classes from students_login table
+          final studentCounts = await Future.wait(
+            classNames.map(
+              (className) => client
+                  .from('students_login')
+                  .select('id')
+                  .eq('class_name', className)
+                  .eq('semester', semester)
+                  .eq('is_active', true),
+            ),
+          );
+          totalStudents = studentCounts.fold(
+            0,
+            (sum, countList) => sum + (countList.length ?? 0),
+          );
+        }
+
+        // Get today's attendance for teacher's classes
+        final today = DateTime.now().toIso8601String().split('T').first;
+        int present = 0;
+        int total = 0;
+
+        if (classNames.isNotEmpty) {
+          final allAttendance = await client
+              .from('attendance_daily')
+              .select('status')
+              .eq('date', today)
+              .inFilter('class_name', classNames);
+
+          present = allAttendance.where((a) => a['status'] == 'Present').length;
+          total = allAttendance.length;
+        }
+
         final attendanceStr = total > 0 ? '$present/$total' : '0/0';
 
-        final marks = await client
-            .from('continuous_assessment')
-            .select('obtained_marks, total_marks')
-            .eq('department', department);
-
+        // Get marks for teacher's classes
         double totalObtained = 0;
         double totalPossible = 0;
-        for (var m in marks) {
-          totalObtained += (m['obtained_marks'] ?? 0).toDouble();
-          totalPossible += (m['total_marks'] ?? 0).toDouble();
+
+        if (classNames.isNotEmpty) {
+          final marks = await client
+              .from('continuous_assessment')
+              .select('obtained_marks, total_marks')
+              .inFilter('class_name', classNames);
+
+          for (var m in marks) {
+            totalObtained += (m['obtained_marks'] ?? 0).toDouble();
+            totalPossible += (m['total_marks'] ?? 0).toDouble();
+          }
         }
+
         final marksPercent = totalPossible > 0
             ? '${((totalObtained / totalPossible) * 100).toInt()}%'
             : '0%';
 
         yield {
-          'students': studentCount.toString(),
+          'students': totalStudents.toString(),
           'attendance': attendanceStr,
           'marks': marksPercent,
         };
@@ -1887,28 +1934,71 @@ class _TeacherDashboardState extends State<TeacherDashboard>
         final department = widget.user.department?.shortCode ?? 'CST';
         final teacherName = widget.user.name;
 
+        // Get unique courses from routine grouped by subject
         final courses = await client
             .from('routine')
-            .select()
+            .select('subject_code, subject_name, class_name, type, room')
             .eq('department', department)
             .eq('teacher_name', teacherName)
             .eq('is_active', true)
             .order('subject_name', ascending: true);
 
-        final transformed = courses
-            .map(
-              (c) => {
-                'code': c['subject_code'] ?? '',
-                'name': c['subject_name'] ?? '',
-                'class': c['class_name'] ?? '',
-                'lectures': '0/0',
-                'syllabusProgress': 0.0,
-                'status': 'Ongoing',
-              },
-            )
-            .toList();
+        // Group by subject to avoid duplicates
+        final grouped = <String, Map<String, dynamic>>{};
+        for (var c in courses) {
+          final key = c['subject_code'] as String;
+          if (!grouped.containsKey(key)) {
+            grouped[key] = {
+              'code': c['subject_code'] ?? '',
+              'name': c['subject_name'] ?? '',
+              'class': c['class_name'] ?? '',
+              'type': c['type'] ?? 'Theory',
+              'room': c['room'] ?? '',
+              'lectures': '0/0',
+              'syllabusProgress': 0.0,
+              'status': 'Ongoing',
+            };
+          }
+        }
 
-        yield transformed;
+        // Get syllabus progress for each subject
+        final result = <Map<String, dynamic>>[];
+        for (var entry in grouped.entries) {
+          final course = entry.value;
+          final subjectCode = entry.key;
+
+          // Count total routine entries for this subject
+          final lectureCount = await client
+              .from('routine')
+              .select('id')
+              .eq('subject_code', subjectCode)
+              .eq('department', department)
+              .eq('teacher_name', teacherName)
+              .eq('is_active', true);
+
+          // Count completed syllabus entries
+          final syllabusCount = await client
+              .from('syllabus')
+              .select('id')
+              .eq('subject_code', subjectCode)
+              .eq('department', department)
+              .eq('uploaded_by', teacherName);
+
+          final totalLectures = lectureCount.length;
+          final completedTopics = syllabusCount.length;
+
+          course['lectures'] = '$completedTopics/$totalLectures';
+          course['syllabusProgress'] = totalLectures > 0
+              ? (completedTopics / totalLectures).clamp(0.0, 1.0)
+              : 0.0;
+          course['status'] = course['syllabusProgress'] >= 0.8
+              ? 'Wrap Up'
+              : 'Ongoing';
+
+          result.add(course);
+        }
+
+        yield result;
       } catch (e) {
         print('❌ Error fetching courses: $e');
         yield [];

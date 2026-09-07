@@ -1951,146 +1951,419 @@ class _ContinuousAssessmentViewState extends State<ContinuousAssessmentView>
   Widget _buildStudentCard(AssessmentModel entry, bool isDark) {
     final controller = _obtainedControllers[entry.id];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.06),
+    return GestureDetector(
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        _showAssessmentOptions(entry, isDark);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.06)
+                : Colors.black.withOpacity(0.06),
+          ),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    Colors.white.withOpacity(0.05),
+                    Colors.white.withOpacity(0.01),
+                  ]
+                : [
+                    Colors.black.withOpacity(0.02),
+                    Colors.black.withOpacity(0.005),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        gradient: LinearGradient(
-          colors: isDark
-              ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.01)]
-              : [
-                  Colors.black.withOpacity(0.02),
-                  Colors.black.withOpacity(0.005),
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 56,
-                  child: Text(
-                    entry.studentRoll.replaceAll('CMT-', ''),
-                    style: TextStyle(
-                      color: isDark
-                          ? Colors.white54
-                          : AppColors.lightPrimaryText,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    entry.studentName,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Geist',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                SizedBox(
-                  width: 90,
-                  child: Container(
-                    height: 34,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withAlpha(8)
-                          : Colors.black.withAlpha(5),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      entry.studentRoll.replaceAll('CMT-', ''),
+                      style: TextStyle(
                         color: isDark
-                            ? Colors.white.withAlpha(15)
-                            : Colors.black.withAlpha(8),
+                            ? Colors.white54
+                            : AppColors.lightPrimaryText,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Geist',
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: controller,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
+                  ),
+                  Expanded(
+                    child: Text(
+                      entry.studentName,
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.lightPrimaryText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Geist',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 90,
+                    child: Container(
+                      height: 34,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withAlpha(8)
+                            : Colors.black.withAlpha(5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withAlpha(15)
+                              : Colors.black.withAlpha(8),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : AppColors.lightPrimaryText,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Geist',
+                              ),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                              ),
+                              onChanged: (value) {
+                                setState(() {
+                                  _hasChanges = true;
+                                });
+                              },
                             ),
-                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            '/${entry.totalMarks.toInt()}',
                             style: TextStyle(
                               color: isDark
-                                  ? Colors.white
-                                  : AppColors.lightPrimaryText,
-                              fontSize: 13,
+                                  ? Colors.white38
+                                  : AppColors.lightCaptionText,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Geist',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Assessment tag (tappable for edit/delete)
+                  GestureDetector(
+                    onLongPress: () {
+                      HapticFeedback.mediumImpact();
+                      _showAssessmentOptions(entry, isDark);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getTypeColor(
+                          entry.assessmentType,
+                        ).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: _getTypeColor(
+                            entry.assessmentType,
+                          ).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            entry.assessmentName,
+                            style: TextStyle(
+                              color: _getTypeColor(entry.assessmentType),
+                              fontSize: 9,
                               fontWeight: FontWeight.bold,
                               fontFamily: 'Geist',
                             ),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              border: InputBorder.none,
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _hasChanges = true;
-                              });
-                            },
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        Text(
-                          '/${entry.totalMarks.toInt()}',
-                          style: TextStyle(
-                            color: isDark
-                                ? Colors.white38
-                                : AppColors.lightCaptionText,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Geist',
+                          const SizedBox(width: 3),
+                          Icon(
+                            Icons.more_horiz_rounded,
+                            color: _getTypeColor(
+                              entry.assessmentType,
+                            ).withOpacity(0.6),
+                            size: 11,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 56,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getTypeColor(
-                        entry.assessmentType,
-                      ).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: _getTypeColor(
-                          entry.assessmentType,
-                        ).withOpacity(0.3),
+                        ],
                       ),
                     ),
-                    child: Center(
-                      child: Text(
-                        entry.assessmentName,
-                        style: TextStyle(
-                          color: _getTypeColor(entry.assessmentType),
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Geist',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show bottom sheet with assessment options (Edit/Delete)
+  /// [isFromDropdown] - true if triggered from dropdown (affects ALL records of that type)
+  ///                     false if triggered from student row (affects single record)
+  Future<void> _showAssessmentOptions(
+    AssessmentModel assessment,
+    bool isDark, {
+    bool isFromDropdown = false,
+  }) async {
+    final typeColor = _getTypeColor(assessment.assessmentType);
+    // Count how many records of this assessment name exist
+    final count = _assessments
+        .where((e) => e.assessmentName == assessment.assessmentName)
+        .length;
+
+    // Dynamic content based on context
+    final titleText = isFromDropdown
+        ? assessment.assessmentName
+        : '${assessment.assessmentName} for ${assessment.studentName}';
+    final subtitleText = isFromDropdown
+        ? '${assessment.assessmentType} • $count records • Whole ${assessment.assessmentType.toLowerCase()}'
+        : '${assessment.assessmentType} • ${assessment.studentName}';
+    final deleteSubtitleText = isFromDropdown
+        ? 'Delete all $count records of this ${assessment.assessmentType.toLowerCase()}'
+        : 'Remove this assessment entry for ${assessment.studentName}';
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          builder: (context, animValue, child) {
+            return Transform.scale(
+              scale: 0.85 + (0.15 * animValue),
+              child: Opacity(opacity: animValue, child: child),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF0F172A).withOpacity(0.92)
+                  : Colors.white.withOpacity(0.92),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.5),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 30,
+                  spreadRadius: -5,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white30 : Colors.black26,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Assessment info header
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            typeColor.withOpacity(0.2),
+                            typeColor.withOpacity(0.1),
+                          ],
                         ),
-                        overflow: TextOverflow.ellipsis,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: typeColor.withOpacity(0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: typeColor.withOpacity(0.2),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isFromDropdown
+                            ? Icons.layers_rounded
+                            : Icons.edit_note_rounded,
+                        color: typeColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            titleText,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Geist',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitleText,
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontSize: 12,
+                              fontFamily: 'Geist',
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (isFromDropdown) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: typeColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: typeColor.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Text(
+                                '$count records',
+                                style: TextStyle(
+                                  color: typeColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Geist',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Divider(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.black.withOpacity(0.05),
+                ),
+                const SizedBox(height: 12),
+                // Edit option
+                _buildOptionTile(
+                  icon: Icons.edit_rounded,
+                  title: isFromDropdown ? 'Edit All' : 'Edit Assessment',
+                  subtitle: isFromDropdown
+                      ? 'Change name, type, or marks for all $count records'
+                      : 'Change name, type, or total marks',
+                  color: const Color(0xFF7B61FF),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _showEditAssessmentDialog(
+                      assessment,
+                      isFromDropdown: isFromDropdown,
+                    );
+                  },
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 8),
+                // Delete option
+                _buildOptionTile(
+                  icon: Icons.delete_outline_rounded,
+                  title: isFromDropdown ? 'Delete All' : 'Delete Assessment',
+                  subtitle: deleteSubtitleText,
+                  color: const Color(0xFFEF4444),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    _deleteAssessment(
+                      assessment,
+                      isFromDropdown: isFromDropdown,
+                    );
+                  },
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 16),
+                // Cancel button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.15)
+                            : Colors.black.withOpacity(0.1),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontFamily: 'Geist',
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -2098,9 +2371,990 @@ class _ContinuousAssessmentViewState extends State<ContinuousAssessmentView>
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  /// Build a single option tile for the assessment options sheet
+  Widget _buildOptionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Geist',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark ? Colors.white54 : Colors.black54,
+                      fontSize: 12,
+                      fontFamily: 'Geist',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: isDark ? Colors.white38 : Colors.black38,
+              size: 14,
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Show edit assessment dialog with category/type/total marks
+  /// [isFromDropdown] - true if editing from dropdown (updates ALL records of this type)
+  Future<void> _showEditAssessmentDialog(
+    AssessmentModel assessment, {
+    bool isFromDropdown = false,
+  }) async {
+    final isDark = AppThemeController.isDarkMode;
+
+    String assessmentName = assessment.assessmentName;
+    String assessmentType = assessment.assessmentType;
+    double totalMarks = assessment.totalMarks;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final matchingOptions = _assessmentOptions
+                .where((opt) => opt['type'] == assessmentType)
+                .toList();
+
+            // Ensure current assessmentName exists in matching options
+            if (!matchingOptions.any((opt) => opt['label'] == assessmentName)) {
+              if (matchingOptions.isNotEmpty) {
+                assessmentName = matchingOptions.first['label'] as String;
+                totalMarks = (matchingOptions.first['total'] as num).toDouble();
+              }
+            }
+
+            final activeColor = _getTypeColor(assessmentType);
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF0D1120).withOpacity(0.92)
+                          : Colors.white.withOpacity(0.9),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.12)
+                            : Colors.white.withOpacity(0.5),
+                        width: 1.2,
+                      ),
+                    ),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      12,
+                      20,
+                      MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white30 : Colors.black26,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Header
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: activeColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: activeColor.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.edit_rounded,
+                                color: activeColor,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isFromDropdown
+                                        ? 'Edit All ${assessment.assessmentName}'
+                                        : 'Edit Assessment',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : AppColors.lightPrimaryText,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily: 'Geist',
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  Text(
+                                    isFromDropdown
+                                        ? 'Update all ${assessment.assessmentName} records'
+                                        : 'Update assessment details',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                      fontSize: 12,
+                                      fontFamily: 'Geist',
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Category',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white60
+                                        : AppColors.lightSubtitleText,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Geist',
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _quickTypes.map((type) {
+                                    final isSelected = assessmentType == type;
+                                    final chipColor = _getTypeColor(type);
+                                    return InkWell(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        setSheetState(() {
+                                          assessmentType = type;
+                                          final matching = _assessmentOptions
+                                              .where(
+                                                (opt) => opt['type'] == type,
+                                              )
+                                              .toList();
+                                          if (matching.isNotEmpty) {
+                                            assessmentName =
+                                                matching.first['label']
+                                                    as String;
+                                            totalMarks =
+                                                (matching.first['total'] as num)
+                                                    .toDouble();
+                                          }
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? chipColor
+                                              : (isDark
+                                                    ? Colors.white.withOpacity(
+                                                        0.05,
+                                                      )
+                                                    : Colors.black.withOpacity(
+                                                        0.04,
+                                                      )),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? chipColor
+                                                : (isDark
+                                                      ? Colors.white
+                                                            .withOpacity(0.1)
+                                                      : Colors.black
+                                                            .withOpacity(0.08)),
+                                            width: 1.2,
+                                          ),
+                                          boxShadow: isSelected
+                                              ? [
+                                                  BoxShadow(
+                                                    color: chipColor
+                                                        .withOpacity(0.4),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ]
+                                              : [],
+                                        ),
+                                        child: Text(
+                                          type,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : (isDark
+                                                      ? Colors.white70
+                                                      : AppColors
+                                                            .lightPrimaryText),
+                                            fontSize: 12,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.w500,
+                                            fontFamily: 'Geist',
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 16),
+                                // Assessment name dropdown
+                                DropdownButtonFormField<String>(
+                                  value: assessmentName,
+                                  dropdownColor: isDark
+                                      ? const Color(0xFF1E293B)
+                                      : Colors.white,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    fontFamily: 'Geist',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  items: matchingOptions
+                                      .map<DropdownMenuItem<String>>((option) {
+                                        return DropdownMenuItem<String>(
+                                          value: option['label'] as String,
+                                          child: Text(
+                                            '${option['label']} (${option['total']} marks)',
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      })
+                                      .toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      HapticFeedback.lightImpact();
+                                      final option = _assessmentOptions
+                                          .firstWhere(
+                                            (opt) => opt['label'] == value,
+                                          );
+                                      setSheetState(() {
+                                        assessmentName = value;
+                                        totalMarks = (option['total'] as num)
+                                            .toDouble();
+                                      });
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    labelText: 'Assessment Name',
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white54
+                                          : AppColors.lightSubtitleText,
+                                      fontSize: 12,
+                                      fontFamily: 'Geist',
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.12)
+                                            : Colors.black.withOpacity(0.08),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: activeColor,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                // Total marks field
+                                TextFormField(
+                                  initialValue: totalMarks.toStringAsFixed(0),
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppColors.lightPrimaryText,
+                                    fontFamily: 'Geist',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Total Marks',
+                                    labelStyle: TextStyle(
+                                      color: isDark
+                                          ? Colors.white54
+                                          : AppColors.lightSubtitleText,
+                                      fontSize: 12,
+                                      fontFamily: 'Geist',
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.12)
+                                            : Colors.black.withOpacity(0.08),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: activeColor,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    final parsed = double.tryParse(value);
+                                    if (parsed != null) {
+                                      setSheetState(() {
+                                        totalMarks = parsed;
+                                      });
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                // Action buttons
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () {
+                                          // Close this dialog and go back to options sheet
+                                          Navigator.pop(sheetContext);
+                                          // Reopen the options sheet so user can pick another action
+                                          Future.delayed(
+                                            const Duration(milliseconds: 120),
+                                            () {
+                                              if (mounted) {
+                                                _showAssessmentOptions(
+                                                  assessment,
+                                                  isDark,
+                                                  isFromDropdown:
+                                                      isFromDropdown,
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                          side: BorderSide(
+                                            color: isDark
+                                                ? Colors.white.withOpacity(0.2)
+                                                : Colors.black.withOpacity(
+                                                    0.15,
+                                                  ),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Cancel',
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white70
+                                                : Colors.black87,
+                                            fontFamily: 'Geist',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          await _updateAssessmentDetails(
+                                            assessmentId: assessment.id,
+                                            oldAssessmentName:
+                                                assessment.assessmentName,
+                                            assessmentName: assessmentName,
+                                            assessmentType: assessmentType,
+                                            totalMarks: totalMarks,
+                                            isFromDropdown: isFromDropdown,
+                                          );
+                                          if (mounted) {
+                                            Navigator.pop(sheetContext);
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: activeColor,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                          elevation: 4,
+                                          shadowColor: activeColor.withOpacity(
+                                            0.5,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Update',
+                                          style: TextStyle(
+                                            fontFamily: 'Geist',
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Update assessment details and refresh local state
+  /// [isFromDropdown] - true if updating from dropdown (updates ALL records of this type)
+  /// [oldAssessmentName] - the original assessment name (used to identify which type to update)
+  Future<void> _updateAssessmentDetails({
+    required String assessmentId,
+    required String assessmentName,
+    required String assessmentType,
+    required double totalMarks,
+    String? oldAssessmentName,
+    bool isFromDropdown = false,
+  }) async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      if (isFromDropdown) {
+        // Type-level update: update ALL records matching this type for the class
+        final updatedList = await _assessmentService
+            .updateAssessmentTypeDetails(
+              className: widget.className,
+              subjectCode: widget.subjectCode,
+              semester: widget.semester,
+              assessmentName: oldAssessmentName ?? assessmentName,
+              newAssessmentName: assessmentName,
+              newAssessmentType: assessmentType,
+              newTotalMarks: totalMarks,
+            );
+
+        if (updatedList != null && updatedList.isNotEmpty && mounted) {
+          // Replace all matching local records with the updated ones
+          setState(() {
+            for (final updated in updatedList) {
+              final index = _assessments.indexWhere(
+                (item) => item.id == updated.id,
+              );
+              if (index != -1) {
+                _assessments[index] = updated;
+              }
+            }
+            _originalAssessments = _assessments
+                .map((e) => e.copyWith())
+                .toList();
+            _filterAssessments();
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'All ${updatedList.length} $assessmentName records updated successfully!',
+                      style: const TextStyle(fontFamily: 'Geist'),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+          HapticFeedback.lightImpact();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to update assessment records'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Single-record update
+        final updated = await _assessmentService.updateAssessmentDetails(
+          assessmentId: assessmentId,
+          assessmentName: assessmentName,
+          assessmentType: assessmentType,
+          totalMarks: totalMarks,
+        );
+
+        if (updated != null && mounted) {
+          // Update the local list
+          final index = _assessments.indexWhere(
+            (item) => item.id == assessmentId,
+          );
+          if (index != -1) {
+            setState(() {
+              _assessments[index] = updated;
+              _originalAssessments = _assessments
+                  .map((e) => e.copyWith())
+                  .toList();
+              _filterAssessments();
+            });
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Assessment updated successfully!',
+                    style: TextStyle(fontFamily: 'Geist'),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+          HapticFeedback.lightImpact();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to update assessment'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Update error: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  /// Delete assessment with confirmation dialog
+  /// [isFromDropdown] - true if deleting from dropdown (deletes ALL records of this type)
+  Future<void> _deleteAssessment(
+    AssessmentModel assessment, {
+    bool isFromDropdown = false,
+  }) async {
+    final isDark = AppThemeController.isDarkMode;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: 0.8 + (0.2 * value),
+              child: Opacity(opacity: value, child: child),
+            );
+          },
+          child: AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                color: isDark
+                    ? Colors.white.withOpacity(0.12)
+                    : Colors.black.withOpacity(0.08),
+              ),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isFromDropdown
+                        ? 'Delete All ${assessment.assessmentName}'
+                        : 'Delete Assessment',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontFamily: 'Geist',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              isFromDropdown
+                  ? 'This will delete ALL "${assessment.assessmentName}" records for this class.\n\nThis action cannot be undone.'
+                  : 'Delete "${assessment.assessmentName}" for ${assessment.studentName}? This cannot be undone.',
+              style: TextStyle(
+                color: isDark ? Colors.white70 : Colors.black54,
+                fontFamily: 'Geist',
+                fontSize: 13,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: isDark ? Colors.white54 : Colors.black54,
+                    fontFamily: 'Geist',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(
+                    fontFamily: 'Geist',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _isSaving = true;
+      });
+
+      try {
+        if (isFromDropdown) {
+          // Delete ALL records of this assessment type
+          final success = await _assessmentService.deleteAssessmentType(
+            widget.className,
+            widget.subjectCode,
+            widget.semester,
+            assessment.assessmentName,
+          );
+
+          if (success && mounted) {
+            // Find IDs to dispose
+            final idsToRemove = _assessments
+                .where((e) => e.assessmentName == assessment.assessmentName)
+                .map((e) => e.id)
+                .toList();
+            // Remove all matching records from local list
+            setState(() {
+              _assessments.removeWhere(
+                (item) => item.assessmentName == assessment.assessmentName,
+              );
+              _originalAssessments = _assessments
+                  .map((e) => e.copyWith())
+                  .toList();
+              // Dispose controllers for deleted entries
+              for (final id in idsToRemove) {
+                _obtainedControllers[id]?.dispose();
+                _obtainedControllers.remove(id);
+              }
+              // If the currently filtered type is now empty, reset to 'all'
+              if (_selectedAssessmentName == assessment.assessmentName) {
+                _selectedAssessmentName = 'all';
+              }
+              _filterAssessments();
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'All ${assessment.assessmentName} records deleted!',
+                        style: const TextStyle(fontFamily: 'Geist'),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+            HapticFeedback.mediumImpact();
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Failed to delete assessment records'),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        } else {
+          // Single-record delete (from student row)
+          final success = await _assessmentService.deleteAssessment(
+            assessment.id,
+          );
+
+          if (success && mounted) {
+            // Remove from local list
+            setState(() {
+              _assessments.removeWhere((item) => item.id == assessment.id);
+              _originalAssessments = _assessments
+                  .map((e) => e.copyWith())
+                  .toList();
+              // Dispose the deleted controller
+              _obtainedControllers[assessment.id]?.dispose();
+              _obtainedControllers.remove(assessment.id);
+              _filterAssessments();
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: const [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Assessment deleted successfully!',
+                      style: TextStyle(fontFamily: 'Geist'),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+            HapticFeedback.mediumImpact();
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Failed to delete assessment'),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Delete error: $e'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+        }
+      }
+    }
   }
 
   Widget _buildLoadingState(bool isDark) {
@@ -2288,203 +3542,498 @@ class _ContinuousAssessmentViewState extends State<ContinuousAssessmentView>
           ),
         ],
       ),
-      child: PopupMenuButton<String>(
-        position: PopupMenuPosition.under,
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        elevation: 12,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: isDark
-                ? Colors.white.withAlpha(15)
-                : Colors.black.withAlpha(8),
-          ),
-        ),
-        tooltip: 'Filter assessments',
-        offset: const Offset(0, 6),
-        onSelected: (val) {
-          HapticFeedback.lightImpact();
-          setState(() {
-            _selectedAssessmentName = val;
-            _filterAssessments();
-          });
-        },
-        itemBuilder: (context) => [
-          // 'All' option
-          PopupMenuItem<String>(
-            value: 'all',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => _showAssessmentFilterSheet(isDark, uniqueTypes),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 28,
-                  height: 28,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  width: 22,
+                  height: 22,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF7B61FF), Color(0xFFA78BFA)],
+                      colors: [activeColor, activeColor.withAlpha(180)],
                     ),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(7),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF7B61FF).withAlpha(80),
+                        color: activeColor.withAlpha(100),
                         blurRadius: 6,
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.dashboard_rounded,
-                    size: 14,
+                  child: Icon(
+                    activeFilterValue == 'all'
+                        ? Icons.dashboard_rounded
+                        : _getTypeIcon(activeFilterValue),
+                    size: 12,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  'All',
-                  style: TextStyle(
-                    fontFamily: 'Geist',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7B61FF).withAlpha(30),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+                const SizedBox(width: 8),
+                Flexible(
                   child: Text(
-                    _assessments.length.toString(),
-                    style: const TextStyle(
+                    activeFilterValue,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontFamily: 'Geist',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF7B61FF),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                      letterSpacing: -0.2,
                     ),
                   ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white60 : Colors.black54,
                 ),
               ],
             ),
           ),
-          const PopupMenuDivider(height: 6),
-          // Per-type options
-          ...uniqueTypes.map((t) {
-            final typeColor = _getTypeColor(
-              _assessmentOptions
-                  .firstWhere(
-                    (opt) => opt['label'] == t,
-                    orElse: () => {'type': 'CT'},
-                  )['type']
-                  .toString(),
+        ),
+      ),
+    );
+  }
+
+  /// Glass-morphism filter sheet matching the create assessment box design
+  Future<void> _showAssessmentFilterSheet(
+    bool isDark,
+    List<String> uniqueTypes,
+  ) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.6),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          builder: (context, animValue, child) {
+            return Transform.scale(
+              scale: 0.85 + (0.15 * animValue),
+              child: Opacity(opacity: animValue, child: child),
             );
-            final count = _assessments
-                .where((e) => e.assessmentName == t)
-                .length;
-            return PopupMenuItem<String>(
-              value: t,
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: typeColor.withAlpha(40),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: typeColor.withAlpha(120),
-                        width: 1,
+          },
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF0F172A).withOpacity(0.92)
+                        : Colors.white.withOpacity(0.92),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.white.withOpacity(0.5),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 30,
+                        spreadRadius: -5,
                       ),
-                    ),
-                    child: Icon(_getTypeIcon(t), size: 14, color: typeColor),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    t,
-                    style: TextStyle(
-                      fontFamily: 'Geist',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: typeColor.withAlpha(30),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      count.toString(),
-                      style: TextStyle(
-                        fontFamily: 'Geist',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: typeColor,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Handle bar
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white30 : Colors.black26,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                    ),
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF7B61FF),
+                                    Color(0xFFA78BFA),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF7B61FF,
+                                    ).withAlpha(80),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.filter_list_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Filter Assessments',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : AppColors.lightPrimaryText,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily: 'Geist',
+                                    ),
+                                  ),
+                                  Text(
+                                    'Tap to filter, hold to edit/delete',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                      fontSize: 12,
+                                      fontFamily: 'Geist',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.black.withOpacity(0.05),
+                      ),
+                      // Scrollable filter options
+                      Flexible(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Column(
+                            children: [
+                              // 'All' option
+                              _buildGlassFilterItem(
+                                icon: Icons.dashboard_rounded,
+                                label: 'All',
+                                count: _assessments.length,
+                                color: const Color(0xFF7B61FF),
+                                isSelected: _selectedAssessmentName == 'all',
+                                isDark: isDark,
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  setState(() {
+                                    _selectedAssessmentName = 'all';
+                                    _filterAssessments();
+                                  });
+                                },
+                                onLongPress: () {
+                                  Navigator.pop(sheetContext);
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              // Per-type options
+                              ...uniqueTypes.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final t = entry.value;
+                                final typeColor = _getTypeColor(
+                                  _assessmentOptions
+                                      .firstWhere(
+                                        (opt) => opt['label'] == t,
+                                        orElse: () => {'type': 'CT'},
+                                      )['type']
+                                      .toString(),
+                                );
+                                final count = _assessments
+                                    .where((e) => e.assessmentName == t)
+                                    .length;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.0, end: 1.0),
+                                    duration: Duration(
+                                      milliseconds: 200 + (index * 50),
+                                    ),
+                                    curve: Curves.easeOutCubic,
+                                    builder: (context, itemAnim, child) {
+                                      return Transform.translate(
+                                        offset: Offset(0, 20 * (1 - itemAnim)),
+                                        child: Opacity(
+                                          opacity: itemAnim,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: _buildGlassFilterItem(
+                                      icon: _getTypeIcon(t),
+                                      label: t,
+                                      count: count,
+                                      color: typeColor,
+                                      isSelected: _selectedAssessmentName == t,
+                                      isDark: isDark,
+                                      onTap: () {
+                                        Navigator.pop(sheetContext);
+                                        setState(() {
+                                          _selectedAssessmentName = t;
+                                          _filterAssessments();
+                                        });
+                                      },
+                                      onLongPress: () {
+                                        HapticFeedback.mediumImpact();
+                                        final firstMatch = _assessments
+                                            .firstWhere(
+                                              (e) => e.assessmentName == t,
+                                              orElse: () =>
+                                                  _assessments.isNotEmpty
+                                                  ? _assessments.first
+                                                  : AssessmentModel(
+                                                      id: '',
+                                                      rollNumber: '',
+                                                      studentName: '',
+                                                      department:
+                                                          widget.department,
+                                                      semester: widget.semester,
+                                                      subjectCode:
+                                                          widget.subjectCode,
+                                                      subjectName:
+                                                          widget.subjectName,
+                                                      className:
+                                                          widget.className,
+                                                      assessmentType: t,
+                                                      assessmentName: t,
+                                                      obtainedMarks: 0,
+                                                      totalMarks: 0,
+                                                      teacherName:
+                                                          widget.teacher.name,
+                                                      createdAt: DateTime.now(),
+                                                      updatedAt: DateTime.now(),
+                                                    ),
+                                            );
+                                        Navigator.pop(sheetContext);
+                                        Future.delayed(
+                                          const Duration(milliseconds: 150),
+                                          () {
+                                            if (mounted) {
+                                              _showAssessmentOptions(
+                                                firstMatch,
+                                                isDark,
+                                                isFromDropdown: true,
+                                              );
+                                            }
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 8),
+                              // Cancel button
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(sheetContext),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.15)
+                                          : Colors.black.withOpacity(0.1),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black87,
+                                      fontFamily: 'Geist',
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            );
-          }),
-        ],
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Individual glass-morphism filter item
+  Widget _buildGlassFilterItem({
+    required IconData icon,
+    required String label,
+    required int count,
+    required Color color,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+    required VoidCallback onLongPress,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+                  )
+                : null,
+            color: isSelected
+                ? null
+                : (isDark
+                      ? Colors.white.withOpacity(0.03)
+                      : Colors.black.withOpacity(0.02)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected
+                  ? color.withOpacity(0.5)
+                  : (isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : Colors.black.withOpacity(0.05)),
+              width: isSelected ? 1.5 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                width: 22,
-                height: 22,
+              Container(
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [activeColor, activeColor.withAlpha(180)],
+                    colors: [color, color.withAlpha(180)],
                   ),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
-                    BoxShadow(color: activeColor.withAlpha(100), blurRadius: 6),
+                    BoxShadow(color: color.withAlpha(60), blurRadius: 6),
                   ],
                 ),
-                child: Icon(
-                  activeFilterValue == 'all'
-                      ? Icons.dashboard_rounded
-                      : _getTypeIcon(activeFilterValue),
-                  size: 12,
-                  color: Colors.white,
+                child: Icon(icon, size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: 'Geist',
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.white
+                            : AppColors.lightPrimaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isSelected ? 'Currently selected' : 'Tap to filter',
+                      style: TextStyle(
+                        fontFamily: 'Geist',
+                        fontSize: 11,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(30),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: color.withAlpha(60)),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontFamily: 'Geist',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  activeFilterValue,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'Geist',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: isDark ? Colors.white : AppColors.lightPrimaryText,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
               Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: isDark ? Colors.white60 : Colors.black54,
+                Icons.touch_app_rounded,
+                size: 14,
+                color: isDark
+                    ? Colors.white.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.2),
               ),
             ],
           ),

@@ -45,12 +45,13 @@ class AssessmentService {
     }
   }
 
-  /// Get students for a class from students_login table
+  /// Get students for a class from students_login table (with flexible matching)
   Future<List<Student>> getStudents(String className, int semester) async {
     try {
       print('📚 Fetching students for class: $className, semester: $semester');
 
-      final response = await _supabase
+      // Try exact match first
+      var response = await _supabase
           .from('students_login')
           .select('roll_number, student_name')
           .eq('class_name', className)
@@ -58,7 +59,20 @@ class AssessmentService {
           .eq('is_active', true)
           .order('roll_number', ascending: true);
 
-      print('📊 Found ${response.length} students');
+      print('📊 Exact match found ${response.length} students');
+
+      // If no results, try with partial/ILIKE match
+      if (response.isEmpty) {
+        print('⚠️ No exact match, trying partial match...');
+        response = await _supabase
+            .from('students_login')
+            .select('roll_number, student_name')
+            .ilike('class_name', '%$className%')
+            .eq('semester', semester)
+            .eq('is_active', true)
+            .order('roll_number', ascending: true);
+        print('📊 Partial match found ${response.length} students');
+      }
 
       if (response.isEmpty) {
         print('⚠️ No students found');
@@ -72,7 +86,7 @@ class AssessmentService {
     }
   }
 
-  /// Get registered students for class/semester from students_login table
+  /// Get registered students for class/semester from students_login table (with flexible matching)
   Future<List<Map<String, dynamic>>> getClassStudents(
     String className,
     int semester,
@@ -82,7 +96,8 @@ class AssessmentService {
         '📊 Fetching class students from students_login for: $className, semester: $semester',
       );
 
-      final response = await _supabase
+      // Try exact match first
+      var response = await _supabase
           .from('students_login')
           .select('roll_number, student_name')
           .eq('class_name', className)
@@ -90,7 +105,24 @@ class AssessmentService {
           .eq('is_active', true)
           .order('roll_number', ascending: true);
 
-      print('📊 Found ${response.length} students in class: $className');
+      print(
+        '📊 Exact match found ${response.length} students in class: $className',
+      );
+
+      // If no results, try with partial/ILIKE match
+      if (response.isEmpty) {
+        print('⚠️ No exact match, trying partial match...');
+        response = await _supabase
+            .from('students_login')
+            .select('roll_number, student_name')
+            .ilike('class_name', '%$className%')
+            .eq('semester', semester)
+            .eq('is_active', true)
+            .order('roll_number', ascending: true);
+        print(
+          '📊 Partial match found ${response.length} students in class: $className',
+        );
+      }
 
       return (response as List)
           .map(
@@ -282,13 +314,126 @@ class AssessmentService {
   /// Delete an assessment entry
   Future<bool> deleteAssessment(String assessmentId) async {
     try {
+      print('🗑️ Deleting assessment ID: $assessmentId');
+
       await _supabase
           .from('continuous_assessment')
           .delete()
           .eq('id', assessmentId);
+
+      print('✅ Assessment deleted successfully');
       return true;
     } catch (e) {
       print('❌ Error deleting assessment: $e');
+      return false;
+    }
+  }
+
+  /// Update assessment details (name, type, total marks) for a single record
+  Future<AssessmentModel?> updateAssessmentDetails({
+    required String assessmentId,
+    required String assessmentName,
+    required String assessmentType,
+    required double totalMarks,
+  }) async {
+    try {
+      print(
+        '📝 Updating assessment details: ID=$assessmentId, name=$assessmentName, type=$assessmentType, total=$totalMarks',
+      );
+
+      final response = await _supabase
+          .from('continuous_assessment')
+          .update({
+            'assessment_name': assessmentName,
+            'assessment_type': assessmentType,
+            'total_marks': totalMarks,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', assessmentId)
+          .select()
+          .maybeSingle();
+
+      if (response == null) {
+        print('❌ Update failed - no rows modified');
+        return null;
+      }
+
+      print('✅ Updated assessment details for ID: $assessmentId');
+      return AssessmentModel.fromJson(response);
+    } catch (e) {
+      print('❌ Error updating assessment details: $e');
+      return null;
+    }
+  }
+
+  /// Update ALL assessments of a given type/name (used when editing from dropdown)
+  Future<List<AssessmentModel>?> updateAssessmentTypeDetails({
+    required String className,
+    required String subjectCode,
+    required int semester,
+    required String assessmentName,
+    required String newAssessmentName,
+    required String newAssessmentType,
+    required double newTotalMarks,
+  }) async {
+    try {
+      print(
+        '📝 Updating ALL assessments of type: $assessmentName -> $newAssessmentName ($newAssessmentType, $newTotalMarks marks)',
+      );
+
+      final response = await _supabase
+          .from('continuous_assessment')
+          .update({
+            'assessment_name': newAssessmentName,
+            'assessment_type': newAssessmentType,
+            'total_marks': newTotalMarks,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('class_name', className)
+          .eq('subject_code', subjectCode)
+          .eq('semester', semester)
+          .eq('assessment_name', assessmentName)
+          .select();
+
+      if (response == null || (response as List).isEmpty) {
+        print('❌ Update failed - no rows modified');
+        return null;
+      }
+
+      print(
+        '✅ Updated ${(response as List).length} assessments of type: $assessmentName',
+      );
+      return (response as List)
+          .map((json) => AssessmentModel.fromJson(json))
+          .toList();
+    } catch (e) {
+      print('❌ Error updating assessment type details: $e');
+      return null;
+    }
+  }
+
+  /// Delete ALL assessments of a given type/name (used when deleting from dropdown)
+  Future<bool> deleteAssessmentType(
+    String className,
+    String subjectCode,
+    int semester,
+    String assessmentName,
+  ) async {
+    try {
+      print('🗑️ Deleting ALL assessments of type: $assessmentName');
+
+      await _supabase
+          .from('continuous_assessment')
+          .delete()
+          .eq('class_name', className)
+          .eq('subject_code', subjectCode)
+          .eq('semester', semester)
+          .eq('assessment_name', assessmentName);
+
+      print('✅ All $assessmentName assessments deleted successfully');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting assessment type: $e');
       return false;
     }
   }
