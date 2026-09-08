@@ -1,11 +1,6 @@
 // =============================================================================
 // lib/views/admin/admin_dashboard.dart
-// CPI Admin Command Center — Student/Teacher Dashboard Parity Edition
-// Features:
-//   • Dynamic Role Background Painter Integration (Amber/Orange Drift)
-//   • Exact Student Dashboard Glassmorphism Navbar & Animated Pill
-//   • Staggered Entry Animations
-//   • Re-ordered Metrics Grid at top
+// CPI Admin Command Center — Optimized & Fixed Edition
 // =============================================================================
 
 import 'dart:async';
@@ -23,13 +18,7 @@ import '../../models/user_role.dart' as role_model;
 import '../../widgets/animated_background_painter.dart' hide UserRole;
 import '../components/admin_operations_sheets.dart';
 import '../../widgets/premium_refresh_indicator.dart';
-import '../../widgets/admin_dialogs.dart';
-import 'teacher_management_view.dart';
-import 'student_management_view.dart';
-import 'result_management_view.dart';
 import 'notice_management_view.dart';
-import 'admission_triage_view.dart';
-import 'routine_scheduler_view.dart';
 
 class AdminDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -67,6 +56,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     'assets/cpi_bg4.png',
     'assets/cpi_bg5.png',
   ];
+
+  // Cache for dashboard stats to reduce rebuilds
+  Map<String, dynamic> _cachedStats = {};
 
   @override
   void initState() {
@@ -121,6 +113,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     _staggerController.forward();
 
     AppThemeController.themeModeNotifier.addListener(_themeListener);
+
+    // Pre-load stats
+    _loadStats();
   }
 
   void _themeListener() {
@@ -159,6 +154,29 @@ class _AdminDashboardState extends State<AdminDashboard>
     _staggerController.forward();
   }
 
+  void _navigateToRoute(String routeName) {
+    Navigator.pushNamed(
+      context,
+      routeName,
+      arguments: AdminRouteArgs(user: widget.user),
+    );
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final stats = await AdminService(
+        SupabaseService.client,
+      ).getDashboardStats('CST');
+      if (mounted) {
+        setState(() {
+          _cachedStats = stats;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading stats: $e');
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -173,35 +191,6 @@ class _AdminDashboardState extends State<AdminDashboard>
     super.dispose();
   }
 
-  void _showQuickActionSnackBar(String title) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFF0F172A).withAlpha(240),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFFF59E0B), width: 1),
-        ),
-        content: Row(
-          children: [
-            const Icon(Icons.bolt_rounded, color: Color(0xFFF59E0B), size: 20),
-            const SizedBox(width: 10),
-            Text(
-              "Launching $title...",
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Geist',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Opens Dedicated Admin Search Experience
   void _openAdminSearchPage(BuildContext context) {
     showGeneralDialog(
       context: context,
@@ -269,7 +258,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   ),
                                   decoration: InputDecoration(
                                     hintText:
-                                        "Search students, faculty, departments..."
+                                        "Search students, faculty, departments...",
                                     hintStyle: TextStyle(
                                       color: isDark
                                           ? Colors.white38
@@ -582,7 +571,6 @@ class _AdminDashboardState extends State<AdminDashboard>
       endDrawer: _buildOptionsDrawer(context),
       body: Stack(
         children: [
-          // Background
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _bgAnimController,
@@ -786,7 +774,6 @@ class _AdminDashboardState extends State<AdminDashboard>
             });
           }
           _pageController.jumpToPage(index);
-
           if (index == 0) {
             _triggerDashboardReentrySequence();
           }
@@ -843,7 +830,6 @@ class _AdminDashboardState extends State<AdminDashboard>
       color: Colors.transparent,
       child: Stack(
         children: [
-          // Background Image
           Positioned(
             top: 0,
             left: 0,
@@ -887,42 +873,6 @@ class _AdminDashboardState extends State<AdminDashboard>
               ),
             ),
           ),
-          if (isDark) ...[
-            Positioned(
-              top: 240,
-              left: -100,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFF59E0B).withAlpha(35),
-                      const Color(0xFFF59E0B).withAlpha(0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 450,
-              right: -100,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      const Color(0xFFD97706).withAlpha(25),
-                      const Color(0xFFD97706).withAlpha(0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
           Positioned.fill(
             child: PremiumRefreshIndicator(
               onRefresh: _refreshAll,
@@ -931,7 +881,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
                         20.0,
@@ -951,9 +900,9 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   Builder(
                                     builder: (context) {
                                       return InkWell(
-                                        onTap: () {
-                                          Scaffold.of(context).openEndDrawer();
-                                        },
+                                        onTap: () => Scaffold.of(
+                                          context,
+                                        ).openEndDrawer(),
                                         borderRadius: BorderRadius.circular(24),
                                         child: Container(
                                           width: 46,
@@ -1019,32 +968,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                                                             0xFFF59E0B,
                                                           ),
                                                     shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color:
-                                                            (_isEmergencyModeActive
-                                                                    ? const Color(
-                                                                        0xFFEF4444,
-                                                                      )
-                                                                    : const Color(
-                                                                        0xFFF59E0B,
-                                                                      ))
-                                                                .withAlpha(
-                                                                  (_pulseController
-                                                                              .value *
-                                                                          255)
-                                                                      .toInt(),
-                                                                ),
-                                                        blurRadius:
-                                                            8 *
-                                                            _pulseController
-                                                                .value,
-                                                        spreadRadius:
-                                                            2 *
-                                                            _pulseController
-                                                                .value,
-                                                      ),
-                                                    ],
                                                   ),
                                                 );
                                               },
@@ -1053,10 +976,9 @@ class _AdminDashboardState extends State<AdminDashboard>
                                             Flexible(
                                               child: Text(
                                                 _isEmergencyModeActive
-                                                    ? "EMERGENCY MODE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}"
-                                                    : "ADMIN ONLINE • ID: ${widget.user.teacherId ?? widget.user.rollNumber ?? widget.user.id}",
+                                                    ? "EMERGENCY MODE • CST DEPT"
+                                                    : "CI SIR • CST DEPT ADMIN",
                                                 overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
                                                 style: TextStyle(
                                                   color: _isEmergencyModeActive
                                                       ? const Color(0xFFEF4444)
@@ -1075,16 +997,11 @@ class _AdminDashboardState extends State<AdminDashboard>
                                 ],
                               ),
                             ),
-                            // HEADER ACTION BUTTONS: [ Theme Toggle ] -> [ Search ] -> [ Logout ]
                             Row(
                               mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                // Theme Toggle
                                 const ThemeToggleSwitch(),
                                 const SizedBox(width: 8),
-
-                                // Search Button
                                 IconButton(
                                   onPressed: () =>
                                       _openAdminSearchPage(context),
@@ -1102,8 +1019,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-
-                                // Power Off / Logout
                                 IconButton(
                                   onPressed: () =>
                                       Navigator.pushReplacementNamed(
@@ -1129,8 +1044,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                         ),
                       ),
                     ),
-
-                    // Main Content
                     ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(30),
@@ -1166,210 +1079,96 @@ class _AdminDashboardState extends State<AdminDashboard>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Metrics Grid
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        20 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: _buildMetricsGrid(isDark),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildMetricsGrid(isDark),
                               const SizedBox(height: 24),
-
-                              // Admin Services
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        30 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 4.0,
-                                            ),
-                                            child: Text(
-                                              "Admin Services",
-                                              style: TextStyle(
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : AppColors
-                                                          .lightPrimaryText,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                fontFamily: 'Geist',
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          GridView.count(
-                                            shrinkWrap: true,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                            crossAxisCount: 2,
-                                            crossAxisSpacing: 12,
-                                            mainAxisSpacing: 12,
-                                            childAspectRatio: 1.35,
-                                            children: [
-                                              _buildActionTile(
-                                                "Routine Override",
-                                                Icons.calendar_today_rounded,
-                                                const Color(0xFF2563EB),
-                                                () {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    AppRoutes.routineScheduler,
-                                                    arguments: AdminRouteArgs(
-                                                      user: widget.user,
-                                                    ),
-                                                  );
-                                                },
-                                                isDark,
-                                              ),
-                                              _buildActionTile(
-                                                "Assessment Marks",
-                                                Icons.assessment_rounded,
-                                                const Color(0xFF7B61FF),
-                                                () {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    AppRoutes.resultManagement,
-                                                    arguments: AdminRouteArgs(
-                                                      user: widget.user,
-                                                    ),
-                                                  );
-                                                },
-                                                isDark,
-                                              ),
-                                              _buildActionTile(
-                                                "Attendance Logger",
-                                                Icons.fact_check_rounded,
-                                                const Color(0xFF16A34A),
-                                                () {
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.transparent,
-                                                    builder: (context) =>
-                                                        const AttendanceLoggerSheet(),
-                                                  );
-                                                },
-                                                isDark,
-                                              ),
-                                              _buildActionTile(
-                                                "Admit Clearance",
-                                                Icons.badge_rounded,
-                                                const Color(0xFFD97706),
-                                                () {
-                                                  Navigator.pushNamed(
-                                                    context,
-                                                    AppRoutes.admissionTriage,
-                                                    arguments: AdminRouteArgs(
-                                                      user: widget.user,
-                                                    ),
-                                                  );
-                                                },
-                                                isDark,
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
+                              Text(
+                                "Department Operations Hub",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.lightPrimaryText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Geist',
+                                  letterSpacing: 0.5,
+                                ),
                               ),
+                              const SizedBox(height: 14),
+
+                              // Expanded Full CRUD Grid (6 Main Views)
+                              GridView.count(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 1.35,
+                                children: [
+                                  _buildActionTile(
+                                    "Teacher Roster",
+                                    Icons.supervisor_account_rounded,
+                                    const Color(0xFF10B981),
+                                    () => _navigateToRoute(
+                                      AppRoutes.teacherManagement,
+                                    ),
+                                    isDark,
+                                  ),
+                                  _buildActionTile(
+                                    "Student Directory",
+                                    Icons.school_rounded,
+                                    const Color(0xFF2563EB),
+                                    () => _navigateToRoute(
+                                      AppRoutes.studentManagement,
+                                    ),
+                                    isDark,
+                                  ),
+                                  _buildActionTile(
+                                    "Result Portal",
+                                    Icons.assessment_rounded,
+                                    const Color(0xFF7B61FF),
+                                    () => _navigateToRoute(
+                                      AppRoutes.resultManagement,
+                                    ),
+                                    isDark,
+                                  ),
+                                  _buildActionTile(
+                                    "Notice Board",
+                                    Icons.campaign_rounded,
+                                    const Color(0xFFF59E0B),
+                                    () => _navigateToRoute(
+                                      AppRoutes.noticeManagement,
+                                    ),
+                                    isDark,
+                                  ),
+                                  _buildActionTile(
+                                    "Routine Matrix",
+                                    Icons.calendar_today_rounded,
+                                    const Color(0xFF00E5FF),
+                                    () => _navigateToRoute(
+                                      AppRoutes.routineScheduler,
+                                    ),
+                                    isDark,
+                                  ),
+                                  _buildActionTile(
+                                    "Admission Triage",
+                                    Icons.how_to_reg_rounded,
+                                    const Color(0xFFEF4444),
+                                    () => _navigateToRoute(
+                                      AppRoutes.admissionTriage,
+                                    ),
+                                    isDark,
+                                  ),
+                                ],
+                              ),
+
                               const SizedBox(height: 24),
-
-                              // Emergency Banner
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        35 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: _buildEmergencyBannerToggle(
-                                        isDark,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildEmergencyBannerToggle(isDark),
                               const SizedBox(height: 24),
-
-                              // Semester Selector
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        40 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: _buildSemesterChipsBlock(isDark),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildSemesterChipsBlock(isDark),
                               const SizedBox(height: 24),
-
-                              // Live System Logs
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        45 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: _buildLiveSystemTerminal(isDark),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildLiveSystemTerminal(isDark),
                               const SizedBox(height: 24),
-
-                              // Department Matrix
-                              AnimatedBuilder(
-                                animation: _staggerAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _staggerAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                        0,
-                                        50 * (1 - _staggerAnimation.value),
-                                      ),
-                                      child: _buildDepartmentSection(isDark),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildDepartmentSection(isDark),
                             ],
                           ),
                         ),
@@ -1385,22 +1184,13 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  // ==================== BUILD METHODS ====================
-
   Widget _buildMetricsGrid(bool isDark) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: AdminService(
         SupabaseService.client,
       ).getDashboardStatsStream('CST'),
       builder: (context, snapshot) {
-        final stats =
-            snapshot.data ??
-            {
-              'totalStudents': 0,
-              'activeFaculty': 0,
-              'pendingAdmissions': 0,
-              'liveClassrooms': 0,
-            };
+        final stats = snapshot.data ?? _cachedStats;
         return LayoutBuilder(
           builder: (context, constraints) {
             final cardWidth = (constraints.maxWidth - 12) / 2;
@@ -1500,7 +1290,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Geist',
-                    letterSpacing: -0.5,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1536,15 +1325,6 @@ class _AdminDashboardState extends State<AdminDashboard>
         decoration: BoxDecoration(
           color: isDark ? Colors.white.withAlpha(8) : AppColors.lightBackground,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(8),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
           border: Border.all(
             color: isDark
                 ? Colors.white.withAlpha(12)
@@ -1687,7 +1467,6 @@ class _AdminDashboardState extends State<AdminDashboard>
               fontSize: 15,
               fontWeight: FontWeight.bold,
               fontFamily: 'Geist',
-              letterSpacing: 0.5,
             ),
           ),
         ),
@@ -1777,7 +1556,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Geist',
-                  letterSpacing: 0.5,
                 ),
               ),
               Container(
@@ -1817,61 +1595,33 @@ class _AdminDashboardState extends State<AdminDashboard>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: activities.isEmpty
                         ? [
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8.0),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                ),
-                                child: Text(
-                                  "No recent activity",
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white.withAlpha(125)
-                                        : Colors.black54,
-                                    fontSize: 12,
-                                    fontFamily: 'Geist',
-                                  ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
+                              child: Text(
+                                "No recent system logs recorded",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.black38,
+                                  fontSize: 11,
+                                  fontFamily: 'Geist',
                                 ),
                               ),
+                            ),
                           ]
-                        : List.generate(activities.length.clamp(0, 5), (idx) {
-                            final a = activities[idx];
-                            final time = a['time'] != null
-                                ? _formatTime(a['time'])
-                                : '--:--';
-                            final action = (a['type'] ?? 'event')
-                                .toString()
-                                .toUpperCase();
-                            final details = a['title'] ?? 'Activity';
-                            final color = Color(
-                              a['color'] as int? ?? 0xFFF59E0B,
-                            );
+                        : List.generate(activities.length.clamp(0, 4), (idx) {
+                            final log = activities[idx];
                             return Padding(
-                              padding: EdgeInsets.only(
-                                bottom:
-                                    idx < (activities.length.clamp(0, 5)) - 1
-                                    ? 8
-                                    : 0,
-                              ),
+                              padding: const EdgeInsets.only(bottom: 8.0),
                               child: _TerminalLogRow(
-                                time: time,
-                                action: action,
-                                details: details,
-                                color: color,
+                                time: log['time'] ?? '12:00',
+                                action: (log['type'] ?? 'EVENT')
+                                    .toString()
+                                    .toUpperCase(),
+                                details: log['title'] ?? 'System Event',
+                                color: const Color(0xFF10B981),
                               ),
                             );
                           }),
@@ -1885,270 +1635,78 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  String _formatTime(dynamic iso) {
-    try {
-      final dt = DateTime.parse(iso.toString()).toLocal();
-      final hh = dt.hour.toString().padLeft(2, '0');
-      final mm = dt.minute.toString().padLeft(2, '0');
-      return '$hh:$mm';
-    } catch (_) {
-      return '--:--';
-    }
-  }
-
   Widget _buildDepartmentSection(bool isDark) {
-    // Department display names
-    final deptNames = {
-      'CST': "Computer Science & Tech",
-      'CIVIL': "Civil Tech",
-      'EE': "Electrical Tech",
-      'ME': "Mechanical Tech",
-      'ECT': "Electronics Tech",
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4.0),
-          child: Text(
-            "Department Matrix",
-            style: TextStyle(
-              color: isDark ? Colors.white : AppColors.lightPrimaryText,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Geist',
-              letterSpacing: 0.5,
+    return StreamBuilder<Map<String, int>>(
+      stream: AdminService(SupabaseService.client).getDepartmentStatsStream(),
+      builder: (context, snapshot) {
+        final stats = snapshot.data ?? {};
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 4.0),
+              child: Text(
+                "Department Roster Matrix",
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Geist',
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        StreamBuilder<Map<String, int>>(
-          stream: AdminService(
-            SupabaseService.client,
-          ).getDepartmentStatsStream(),
-          builder: (context, snapshot) {
-            final stats = snapshot.data ?? {};
-            final depts = stats.entries.toList();
-
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.0),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            }
-
-            if (depts.isEmpty) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withAlpha(8)
-                          : Colors.white.withAlpha(200),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withAlpha(12)
-                            : AppColors.lightCardBorder,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "No department data available",
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white.withAlpha(125)
-                              : Colors.black54,
-                          fontSize: 12,
-                          fontFamily: 'Geist',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: depts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final entry = depts[index];
-                final short = entry.key;
-                final count = entry.value;
-                final name = deptNames[short] ?? short;
-                // Calculate health based on student count (mock logic)
-                final health = count > 0 ? (count / 500).clamp(0.7, 1.0) : 0.0;
-
-                return ClipRRect(
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withAlpha(8)
+                      : Colors.white.withAlpha(200),
                   borderRadius: BorderRadius.circular(16),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withAlpha(8)
-                            : Colors.white.withAlpha(200),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withAlpha(12)
-                              : AppColors.lightCardBorder,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF59E0B).withAlpha(40),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFFF59E0B).withAlpha(80),
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                short,
-                                style: const TextStyle(
-                                  color: Color(0xFFF59E0B),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                  fontFamily: 'Geist',
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppColors.lightPrimaryText,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Geist',
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "Enrolled Students: $count",
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.white.withAlpha(125)
-                                        : Colors.black54,
-                                    fontSize: 11,
-                                    fontFamily: 'Geist',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            "${(health * 100).toInt()}% Active",
-                            style: TextStyle(
-                              color: health >= 0.9
-                                  ? const Color(0xFF10B981)
-                                  : health >= 0.7
-                                  ? const Color(0xFFF59E0B)
-                                  : const Color(0xFFEF4444),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              fontFamily: 'Geist',
-                            ),
-                          ),
-                        ],
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withAlpha(12)
+                        : AppColors.lightCardBorder,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "CST Active Enrollment",
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      ],
+                    Text(
+                      "${stats['CST'] ?? 0} Students",
+                      style: const TextStyle(
+                        color: Color(0xFFF59E0B),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // ✅ Refresh all data (called by pull-to-refresh)
   Future<void> _refreshAll() async {
-    try {
-      setState(() {});
-      // Restart the entry animation to give a refreshed feel
-      _staggerController.forward(from: 0);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Dashboard refreshed',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF10B981),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Refresh failed: $e',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
+    setState(() {});
+    _staggerController.forward(from: 0);
+    await _loadStats();
   }
 }
 
-// ── TERMINAL LOG ROW WIDGET ────────────────────────────────────────────────
 class _TerminalLogRow extends StatelessWidget {
   final String time;
   final String action;
@@ -2211,11 +1769,6 @@ class _TerminalLogRow extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// File is complete — unused _DeptData removed
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ── INTERACTIVE SCALE BUTTON WIDGET ───────────────────────────────────────
 class _InteractiveScaleButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

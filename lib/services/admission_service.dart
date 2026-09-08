@@ -19,7 +19,7 @@ class AdmissionService {
   Future<List<Map<String, dynamic>>> getApplications() async {
     try {
       final response = await _supabase
-          .from('admissions')
+          .from('applications')
           .select()
           .order('created_at', ascending: false);
 
@@ -35,7 +35,7 @@ class AdmissionService {
   Stream<List<Map<String, dynamic>>> getApplicationsStream() async* {
     try {
       final response = await _supabase
-          .from('admissions')
+          .from('applications')
           .select()
           .order('created_at', ascending: false);
       yield List<Map<String, dynamic>>.from(response);
@@ -47,7 +47,7 @@ class AdmissionService {
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
       try {
         final response = await _supabase
-            .from('admissions')
+            .from('applications')
             .select()
             .order('created_at', ascending: false);
         yield List<Map<String, dynamic>>.from(response);
@@ -66,7 +66,7 @@ class AdmissionService {
     try {
       // Get the application first
       final appResponse = await _supabase
-          .from('admissions')
+          .from('applications')
           .select()
           .eq('id', id)
           .single();
@@ -80,7 +80,7 @@ class AdmissionService {
         data['admin_remarks'] = remarks;
       }
 
-      await _supabase.from('admissions').update(data).eq('id', id);
+      await _supabase.from('applications').update(data).eq('id', id);
 
       // If approved, auto-create student record
       if (status == 'approved' && appResponse != null) {
@@ -98,7 +98,7 @@ class AdmissionService {
   /// Create new application (for signup)
   Future<void> createApplication(Map<String, dynamic> data) async {
     try {
-      await _supabase.from('admissions').insert({
+      await _supabase.from('applications').insert({
         'full_name': data['full_name'],
         'email': data['email'],
         'phone': data['phone'],

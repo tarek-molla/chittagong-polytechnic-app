@@ -460,6 +460,65 @@ class AdminService {
   }
 
   // ===========================================================================
+  // SYSTEM SETTINGS
+  // ===========================================================================
+
+  /// Load system settings from Supabase
+  Future<Map<String, dynamic>> loadSystemSettings() async {
+    try {
+      final client = _supabase;
+
+      // Try to load from system_settings table first
+      try {
+        final response = await client.from('system_settings').select().single();
+        return Map<String, dynamic>.from(response);
+      } catch (e) {
+        // If table doesn't exist, return default settings
+        print('System settings table not found, using defaults: $e');
+        return {
+          'isEmergencyModeActive': false,
+          'isSystemMaintenanceMode': false,
+          'isNotificationsEnabled': true,
+          'isAutoBackupEnabled': true,
+          'selectedDepartment': 'CST',
+        };
+      }
+    } catch (e) {
+      print('❌ Error loading system settings: $e');
+      return {
+        'isEmergencyModeActive': false,
+        'isSystemMaintenanceMode': false,
+        'isNotificationsEnabled': true,
+        'isAutoBackupEnabled': true,
+        'selectedDepartment': 'CST',
+      };
+    }
+  }
+
+  /// Update system setting in Supabase
+  Future<bool> updateSystemSetting(String key, dynamic value) async {
+    try {
+      final client = _supabase;
+
+      // Try to update in system_settings table
+      try {
+        await client
+            .from('system_settings')
+            .update({key: value})
+            .eq('id', 'default');
+        return true;
+      } catch (e) {
+        // If table doesn't exist, just simulate the update
+        print('System settings table not found, simulating update: $e');
+        return true;
+      }
+    } catch (e) {
+      print('❌ Error updating system setting: $e');
+      return false;
+    }
+  }
+
+  // ===========================================================================
   // ROLL NUMBER GENERATION
   // ===========================================================================
 

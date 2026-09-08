@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme_provider.dart';
 import '../../core/colors.dart';
 import '../../models/user.dart';
+import '../../models/admission.dart';
 import '../../services/admission_service.dart';
 
 class AdmissionTriageView extends StatefulWidget {
@@ -19,7 +20,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
   late AnimationController _animationController;
   final AdmissionService _admissionService = AdmissionService();
 
-  List<Map<String, dynamic>> _applications = [];
+  List<Admission> _applications = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -48,7 +49,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
     try {
       final apps = await _admissionService.getApplications();
       setState(() {
-        _applications = apps;
+        _applications = apps.map((json) => Admission.fromJson(json)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -273,13 +274,9 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
     );
   }
 
-  Widget _buildApplicationCard(Map<String, dynamic> app, bool isDark) {
-    final status = app['status'] ?? 'pending';
-    final statusColor = status == 'pending'
-        ? Colors.orange
-        : status == 'approved'
-        ? Colors.green
-        : Colors.red;
+  Widget _buildApplicationCard(Admission app, bool isDark) {
+    final statusColor = app.statusColor;
+    final statusEmoji = app.statusEmoji;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -322,20 +319,30 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: statusColor.withOpacity(0.3)),
                       ),
-                      child: Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Geist',
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            statusEmoji,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            app.statusLabel,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Geist',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const Spacer(),
                     Text(
-                      app['created_at'] != null
-                          ? app['created_at'].toString().substring(0, 10)
+                      app.createdAt != null
+                          ? '${app.createdAt!.day}/${app.createdAt!.month}/${app.createdAt!.year}'
                           : '',
                       style: TextStyle(
                         color: isDark ? Colors.white54 : Colors.black54,
@@ -348,7 +355,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                 const SizedBox(height: 10),
 
                 Text(
-                  app['full_name'] ?? 'Unknown',
+                  app.fullName,
                   style: TextStyle(
                     color: isDark ? Colors.white : AppColors.lightPrimaryText,
                     fontSize: 16,
@@ -359,7 +366,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                 const SizedBox(height: 4),
 
                 Text(
-                  app['department'] ?? 'No Department',
+                  app.department,
                   style: TextStyle(
                     color: const Color(0xFF8B5CF6),
                     fontSize: 13,
@@ -373,38 +380,32 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    _buildDetailChip(
-                      Icons.email_rounded,
-                      app['email'] ?? '',
-                      isDark,
-                    ),
-                    _buildDetailChip(
-                      Icons.phone_rounded,
-                      app['phone'] ?? '',
-                      isDark,
-                    ),
-                    _buildDetailChip(
-                      Icons.family_restroom_rounded,
-                      app['father_name'] ?? '',
-                      isDark,
-                    ),
-                    _buildDetailChip(
-                      Icons.calendar_today_rounded,
-                      app['dob']?.toString() ?? '',
-                      isDark,
-                    ),
+                    _buildDetailChip(Icons.email_rounded, app.email, isDark),
+                    if (app.phone != null && app.phone!.isNotEmpty)
+                      _buildDetailChip(Icons.phone_rounded, app.phone!, isDark),
+                    if (app.fatherName != null && app.fatherName!.isNotEmpty)
+                      _buildDetailChip(
+                        Icons.family_restroom_rounded,
+                        'Father: ${app.fatherName}',
+                        isDark,
+                      ),
+                    if (app.motherName != null && app.motherName!.isNotEmpty)
+                      _buildDetailChip(
+                        Icons.family_restroom_rounded,
+                        'Mother: ${app.motherName}',
+                        isDark,
+                      ),
                   ],
                 ),
 
                 const SizedBox(height: 12),
 
-                if (status == 'pending') ...[
+                if (app.isPending) ...[
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () =>
-                              _updateStatus(app['id'].toString(), 'approved'),
+                          onPressed: () => _updateStatus(app.id!, 'approved'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -422,8 +423,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () =>
-                              _updateStatus(app['id'].toString(), 'rejected'),
+                          onPressed: () => _updateStatus(app.id!, 'rejected'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
@@ -440,7 +440,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                       ),
                     ],
                   ),
-                ] else if (status == 'approved') ...[
+                ] else if (app.isApproved) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 8,
@@ -471,7 +471,7 @@ class _AdmissionTriageViewState extends State<AdmissionTriageView>
                       ],
                     ),
                   ),
-                ] else if (status == 'rejected') ...[
+                ] else if (app.isRejected) ...[
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 8,

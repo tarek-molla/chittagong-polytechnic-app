@@ -23,6 +23,9 @@ import '../views/admin/teacher_management_view.dart';
 import '../views/admin/student_management_view.dart';
 import '../views/admin/result_management_view.dart';
 import '../views/admin/notice_management_view.dart';
+import '../views/admin/faculty_management_view.dart';
+import '../views/admin/system_settings_view.dart';
+import '../views/admin/admin_controls_view.dart';
 import '../views/teacher/continuous_assessment_view.dart';
 import '../views/teacher/teacher_syllabus_view.dart';
 import '../views/teacher/teacher_notice_view.dart';
@@ -59,6 +62,9 @@ class AppRoutes {
   static const String studentManagement = '/student/management';
   static const String resultManagement = '/result/management';
   static const String noticeManagement = '/notice/management';
+  static const String facultyManagement = '/faculty/management';
+  static const String systemSettings = '/system/settings';
+  static const String adminControls = '/admin/controls';
 }
 
 class StudentRouteArgs {
@@ -319,6 +325,27 @@ class AppRouter {
         return _slideRoute(
           settings: settings,
           builder: (_) => NoticeManagementView(user: args.user),
+        );
+
+      case AppRoutes.facultyManagement:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => FacultyManagementView(user: args.user),
+        );
+
+      case AppRoutes.systemSettings:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => SystemSettingsView(user: args.user),
+        );
+
+      case AppRoutes.adminControls:
+        final args = _requireArgs<AdminRouteArgs>(settings);
+        return _slideRoute(
+          settings: settings,
+          builder: (_) => AdminControlsView(user: args.user),
         );
 
       default:
