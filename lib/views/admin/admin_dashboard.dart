@@ -19,6 +19,10 @@ import '../../widgets/animated_background_painter.dart' hide UserRole;
 import '../components/admin_operations_sheets.dart';
 import '../../widgets/premium_refresh_indicator.dart';
 import 'notice_management_view.dart';
+import 'admin_controls_view.dart';
+import 'faculty_management_view.dart';
+import 'system_settings_view.dart';
+import 'admission_triage_view.dart';
 
 class AdminDashboard extends StatefulWidget {
   final user_model.AppUser user;
@@ -595,9 +599,10 @@ class _AdminDashboardState extends State<AdminDashboard>
                   calculatedAlpha,
                   dynamicImageOpacity,
                 ),
-                _buildPlaceholderPage("Admin Controls", isDark),
-                _buildPlaceholderPage("Faculty Management", isDark),
-                _buildPlaceholderPage("System Settings", isDark),
+                AdminControlsView(user: widget.user),
+                FacultyManagementView(user: widget.user),
+                SystemSettingsView(user: widget.user),
+                AdmissionTriageView(user: widget.user),
               ],
             ),
           ),
@@ -608,20 +613,6 @@ class _AdminDashboardState extends State<AdminDashboard>
             child: _buildOriginalGlassNavbar(isDark),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderPage(String title, bool isDark) {
-    return Center(
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isDark ? Colors.white : AppColors.lightPrimaryText,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Geist',
-        ),
       ),
     );
   }

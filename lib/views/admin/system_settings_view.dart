@@ -4,17 +4,13 @@
 // Manages system-wide configuration and settings
 // =============================================================================
 
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cpi_app/core/theme_provider.dart';
 import 'package:cpi_app/core/colors.dart';
 import 'package:cpi_app/models/user.dart';
-import 'package:cpi_app/services/admin_service.dart';
-import 'package:cpi_app/widgets/admin_common_widgets.dart';
-import 'package:cpi_app/widgets/admin_dialogs.dart';
 import 'package:cpi_app/services/supabase_service.dart';
+import 'package:cpi_app/widgets/animated_background_painter.dart';
 
 class SystemSettingsView extends StatefulWidget {
   final AppUser user;
@@ -25,1108 +21,964 @@ class SystemSettingsView extends StatefulWidget {
   State<SystemSettingsView> createState() => _SystemSettingsViewState();
 }
 
-class _SystemSettingsViewState extends State<SystemSettingsView> {
-  final AdminService _adminService = AdminService(SupabaseService.client);
-  bool _isLoading = false;
-  String? _errorMessage;
-  bool _isEmergencyModeActive = false;
-  bool _isSystemMaintenanceMode = false;
-  bool _isNotificationsEnabled = true;
-  bool _isAutoBackupEnabled = true;
-  String _selectedDepartment = 'CST';
-  final List<String> _departments = ['CST', 'CIVIL', 'EE', 'ME', 'ECT'];
+class _SystemSettingsViewState extends State<SystemSettingsView>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glowAnimationController;
+
+  // System Settings State
+  bool _pushNotifications = true;
+  bool _emailNotifications = true;
+  bool _academicAlerts = true;
+  bool _eventReminders = false;
+  bool _isEmergencyMode = false;
+  bool _isMaintenanceMode = false;
+  bool _isAutoBackup = true;
+
+  // Data
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSystemSettings();
+    _glowAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat(reverse: true);
+
+    _loadSettings();
   }
 
-  Future<void> _loadSystemSettings() async {
-    setState(() => _isLoading = true);
-    try {
-      // Load current system settings from Supabase or local storage
-      // For now, we'll initialize with default values
-      setState(() {
-        _isEmergencyModeActive = false;
-        _isSystemMaintenanceMode = false;
-        _isNotificationsEnabled = true;
-        _isAutoBackupEnabled = true;
-        _selectedDepartment = 'CST';
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load system settings: $e';
-        _isLoading = false;
-      });
-    }
+  @override
+  void dispose() {
+    _glowAnimationController.dispose();
+    super.dispose();
   }
 
-  Future<void> _updateEmergencyMode(bool value) async {
+  void _loadSettings() async {
     setState(() => _isLoading = true);
     try {
-      // Update emergency mode in Supabase
-      setState(() {
-        _isEmergencyModeActive = value;
-        _isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              value
-                  ? '🚨 Emergency mode activated! All systems will show alerts.'
-                  : '✅ Emergency mode deactivated. System returning to normal operations.',
-            ),
-            backgroundColor: value ? Colors.red : Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
+      // Load settings from Supabase or local storage
+      // For now, use defaults
+      await Future.delayed(const Duration(milliseconds: 500));
+      setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Failed to update emergency mode: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
-  Future<void> _updateSystemSetting(String setting, dynamic value) async {
-    setState(() => _isLoading = true);
-    try {
-      // Update system setting in Supabase
-      await Future.delayed(
-        const Duration(milliseconds: 500),
-      ); // Simulate API call
+  // ===========================================================================
+  // 1. SYSTEM SETTINGS (Emergency, Maintenance, Backup)
+  // ===========================================================================
 
-      setState(() {
-        switch (setting) {
-          case 'maintenance':
-            _isSystemMaintenanceMode = value as bool;
-          case 'notifications':
-            _isNotificationsEnabled = value as bool;
-          case 'backup':
-            _isAutoBackupEnabled = value as bool;
-          case 'department':
-            _selectedDepartment = value as String;
-        }
-        _isLoading = false;
-      });
+  void _showSystemSettingsDialog() {
+    final isDark = AppThemeController.isDarkMode;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ System setting updated successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Failed to update setting: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+    _isEmergencyMode = false;
+    _isMaintenanceMode = false;
+    _isAutoBackup = true;
 
-  Widget _buildSystemStatusCard(bool isDark) {
-    return AdminGlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      showBorder: false,
-      backgroundColor: isDark
-          ? Colors.white.withOpacity(0.03)
-          : Colors.white.withOpacity(0.6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.monitor_rounded,
-                  color: Color(0xFF3B82F6),
-                  size: 24,
-                ),
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF0D0E12) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
               ),
-              const SizedBox(width: 16),
-              Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'System Status',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Geist',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'All systems operational',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                        fontFamily: 'Geist',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      color: Colors.green,
-                      size: 12,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'ONLINE',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Geist',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatusIndicator(
-                  'Database',
-                  'Connected',
-                  Colors.green,
-                  Icons.storage_rounded,
-                  isDark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatusIndicator(
-                  'Authentication',
-                  'Active',
-                  Colors.green,
-                  Icons.security_rounded,
-                  isDark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatusIndicator(
-                  'Notifications',
-                  _isNotificationsEnabled ? 'Enabled' : 'Disabled',
-                  _isNotificationsEnabled ? Colors.green : Colors.orange,
-                  Icons.notifications_rounded,
-                  isDark,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusIndicator(
-    String title,
-    String status,
-    Color color,
-    IconData icon,
-    bool isDark,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withOpacity(0.03)
-            : Colors.grey.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.grey.withOpacity(0.1),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isDark ? Colors.white70 : Colors.black54,
-                  fontSize: 10,
-                  fontFamily: 'Geist',
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                status,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Geist',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmergencyControlCard(bool isDark) {
-    return AdminGlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      showBorder: false,
-      backgroundColor: isDark
-          ? Colors.white.withOpacity(0.03)
-          : Colors.white.withOpacity(0.6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _isEmergencyModeActive
-                      ? Colors.red.withOpacity(0.2)
-                      : const Color(0xFFF59E0B).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _isEmergencyModeActive
-                      ? Icons.warning_amber_rounded
-                      : Icons.campaign_rounded,
-                  color: _isEmergencyModeActive
-                      ? Colors.red
-                      : const Color(0xFFF59E0B),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Emergency Control Center',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Geist',
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'System Settings',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isEmergencyModeActive
-                          ? 'System in emergency mode - all alerts active'
-                          : 'System operating normally',
-                      style: TextStyle(
-                        color: _isEmergencyModeActive
-                            ? Colors.red
-                            : Colors.green,
-                        fontSize: 12,
-                        fontFamily: 'Geist',
+                    const SizedBox(height: 20),
+
+                    _buildSettingToggle(
+                      isDark,
+                      'Emergency Mode',
+                      'Broadcast alerts to all users',
+                      _isEmergencyMode,
+                      (value) {
+                        setDialogState(() {
+                          _isEmergencyMode = value;
+                        });
+                      },
+                      Icons.warning_amber_rounded,
+                      Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildSettingToggle(
+                      isDark,
+                      'Maintenance Mode',
+                      'Restrict access during maintenance',
+                      _isMaintenanceMode,
+                      (value) {
+                        setDialogState(() {
+                          _isMaintenanceMode = value;
+                        });
+                      },
+                      Icons.build_rounded,
+                      Colors.orange,
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildSettingToggle(
+                      isDark,
+                      'Auto Backup',
+                      'Automatically backup data daily',
+                      _isAutoBackup,
+                      (value) {
+                        setDialogState(() {
+                          _isAutoBackup = value;
+                        });
+                      },
+                      Icons.backup_rounded,
+                      Colors.blue,
+                    ),
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _saveSystemSettings();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF59E0B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'SAVE SETTINGS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Switch.adaptive(
-                value: _isEmergencyModeActive,
-                activeColor: Colors.red,
-                onChanged: (value) => _updateEmergencyMode(value),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withOpacity(0.03)
-                  : Colors.grey.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.grey.withOpacity(0.1),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  color: Color(0xFF3B82F6),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Emergency mode will broadcast alerts to all students and faculty',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black54,
-                      fontSize: 11,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSystemSettingsCard(bool isDark) {
-    return AdminGlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      showBorder: false,
-      backgroundColor: isDark
-          ? Colors.white.withOpacity(0.03)
-          : Colors.white.withOpacity(0.6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'System Settings',
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Geist',
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildSettingToggle(
-            'System Maintenance Mode',
-            'Enable maintenance mode (will restrict access)',
-            _isSystemMaintenanceMode,
-            (value) => _updateSystemSetting('maintenance', value),
-            Icons.build_rounded,
-            isDark,
-          ),
-          const Divider(height: 1, color: Color(0xFF3B82F6)),
-          _buildSettingToggle(
-            'Push Notifications',
-            'Send system-wide notifications to all users',
-            _isNotificationsEnabled,
-            (value) => _updateSystemSetting('notifications', value),
-            Icons.notifications_rounded,
-            isDark,
-          ),
-          const Divider(height: 1, color: Color(0xFF3B82F6)),
-          _buildSettingToggle(
-            'Auto Backup',
-            'Automatically backup data every 24 hours',
-            _isAutoBackupEnabled,
-            (value) => _updateSystemSetting('backup', value),
-            Icons.backup_rounded,
-            isDark,
-          ),
-          const Divider(height: 1, color: Color(0xFF3B82F6)),
-          _buildDepartmentSelector(isDark),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildSettingToggle(
+    bool isDark,
     String title,
     String subtitle,
     bool value,
     ValueChanged<bool> onChanged,
     IconData icon,
-    bool isDark,
+    Color color,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: const Color(0xFF3B82F6), size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Geist',
-                  ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.black54,
-                    fontSize: 11,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            activeColor: const Color(0xFF3B82F6),
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDepartmentSelector(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.school_rounded,
-              color: Color(0xFF3B82F6),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Default Department',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withOpacity(0.12)
-                          : Colors.black.withOpacity(0.12),
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedDepartment,
-                      isExpanded: true,
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 12,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         fontFamily: 'Geist',
                       ),
-                      dropdownColor: isDark
-                          ? const Color(0xFF0D0E12)
-                          : Colors.white,
-                      items: _departments
-                          .map(
-                            (dept) => DropdownMenuItem(
-                              value: dept,
-                              child: Text(dept),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          _updateSystemSetting('department', value);
-                        }
-                      },
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionsCard(bool isDark) {
-    return AdminGlassCard(
-      padding: const EdgeInsets.all(20),
-      borderRadius: 20,
-      showBorder: false,
-      backgroundColor: isDark
-          ? Colors.white.withOpacity(0.03)
-          : Colors.white.withOpacity(0.6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black87,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Geist',
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  'Broadcast',
-                  'Send system-wide announcement',
-                  Icons.campaign_rounded,
-                  const Color(0xFF3B82F6),
-                  () => _showBroadcastDialog(),
-                  isDark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionButton(
-                  'Backup',
-                  'Create manual backup',
-                  Icons.backup_rounded,
-                  const Color(0xFF10B981),
-                  () => _showBackupDialog(),
-                  isDark,
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 11,
+                        fontFamily: 'Geist',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  'Logs',
-                  'View system logs',
-                  Icons.list_alt_rounded,
-                  const Color(0xFFF59E0B),
-                  () => _showLogsDialog(),
-                  isDark,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildQuickActionButton(
-                  'Users',
-                  'Manage user sessions',
-                  Icons.people_rounded,
-                  const Color(0xFF8B5CF6),
-                  () => _showUsersDialog(),
-                  isDark,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
+        Switch(value: value, onChanged: onChanged, activeColor: color),
+      ],
+    );
+  }
+
+  void _saveSystemSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ System settings saved!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
     );
   }
 
-  Widget _buildQuickActionButton(
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-    bool isDark,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withOpacity(0.03)
-              : Colors.white.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withOpacity(0.08)
-                : Colors.black.withOpacity(0.05),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Geist',
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: isDark ? Colors.white54 : Colors.black54,
-                fontSize: 11,
-                fontFamily: 'Geist',
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ===========================================================================
+  // 2. NOTIFICATION SETTINGS
+  // ===========================================================================
 
-  void _showBroadcastDialog() {
+  void _showNotificationSettingsDialog() {
+    final isDark = AppThemeController.isDarkMode;
+
+    _pushNotifications = true;
+    _emailNotifications = true;
+    _academicAlerts = true;
+    _eventReminders = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF0D0E12)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withOpacity(0.12)
-                  : Colors.black.withOpacity(0.12),
-            ),
-          ),
+      barrierDismissible: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF0D0E12) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Notification Settings',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildNotificationToggle(
+                      isDark,
+                      'Push Notifications',
+                      'Receive alerts and updates',
+                      _pushNotifications,
+                      (value) {
+                        setDialogState(() {
+                          _pushNotifications = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildNotificationToggle(
+                      isDark,
+                      'Email Notifications',
+                      'Receive email updates',
+                      _emailNotifications,
+                      (value) {
+                        setDialogState(() {
+                          _emailNotifications = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildNotificationToggle(
+                      isDark,
+                      'Academic Alerts',
+                      'Exam schedules, results, etc.',
+                      _academicAlerts,
+                      (value) {
+                        setDialogState(() {
+                          _academicAlerts = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildNotificationToggle(
+                      isDark,
+                      'Event Reminders',
+                      'Workshops, seminars, etc.',
+                      _eventReminders,
+                      (value) {
+                        setDialogState(() {
+                          _eventReminders = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _saveNotificationSettings();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF59E0B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'SAVE SETTINGS',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationToggle(
+    bool isDark,
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Broadcast System Announcement',
+                title,
                 style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black87,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   fontFamily: 'Geist',
                 ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  fontSize: 11,
+                  fontFamily: 'Geist',
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Message',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '📢 Announcement broadcasted to all users!',
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                      ),
-                      child: const Text('Broadcast'),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
         ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: const Color(0xFFF59E0B),
+        ),
+      ],
+    );
+  }
+
+  void _saveNotificationSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ Notification settings saved!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
       ),
     );
   }
 
-  void _showBackupDialog() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.backup_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('🔄 Creating system backup... This may take a few minutes.'),
-          ],
-        ),
-        backgroundColor: Colors.blue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-    // Simulate backup process
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
+  // ===========================================================================
+  // 3. QUICK ACTIONS
+  // ===========================================================================
+
+  void _showBroadcastDialog() {
+    final isDark = AppThemeController.isDarkMode;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: isDark ? const Color(0xFF0D0E12) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 10),
-                Text('✅ Backup completed successfully!'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Broadcast Announcement',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Geist',
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.24)
+                            : Colors.black.withOpacity(0.24),
+                      ),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFF59E0B)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Message',
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.24)
+                            : Colors.black.withOpacity(0.24),
+                      ),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFF59E0B)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('📢 Announcement broadcasted!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'BROADCAST',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
               ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
             ),
           ),
         );
-      }
-    });
-  }
-
-  void _showLogsDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(24),
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF0D0E12)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withOpacity(0.12)
-                  : Colors.black.withOpacity(0.12),
-            ),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'System Logs',
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black87,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.list_alt_rounded,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'System logs will be displayed here',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      },
     );
   }
 
-  void _showUsersDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(24),
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF0D0E12)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withOpacity(0.12)
-                  : Colors.black.withOpacity(0.12),
-            ),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Active User Sessions',
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black87,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Geist',
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_rounded, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        'User session management will be displayed here',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // ===========================================================================
+  // 4. UI BUILD
+  // ===========================================================================
+
+  List<Map<String, dynamic>> get _settingsMenuItems => [
+    {
+      'icon': Icons.settings_rounded,
+      'title': 'System Settings',
+      'subtitle': 'Emergency, maintenance, backup',
+      'onTap': _showSystemSettingsDialog,
+    },
+    {
+      'icon': Icons.notifications_rounded,
+      'title': 'Notification Preferences',
+      'subtitle': 'Manage alert settings',
+      'onTap': _showNotificationSettingsDialog,
+    },
+    {
+      'icon': Icons.campaign_rounded,
+      'title': 'Broadcast Announcement',
+      'subtitle': 'Send system-wide message',
+      'onTap': _showBroadcastDialog,
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppThemeController.isDarkMode;
+    const fallbackLightBackground = Color(0xFFF1F5F9);
 
     return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF070B19)
-          : AppColors.lightBackground,
-      appBar: AppBar(
-        title: Text(
-          'System Settings',
-          style: TextStyle(
-            fontFamily: 'Geist',
-            fontWeight: FontWeight.w900,
-            color: isDark ? Colors.white : AppColors.lightPrimaryText,
+          : fallbackLightBackground,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: AnimatedBackgroundPainter(
+                animation: const AlwaysStoppedAnimation(0.5),
+                isLightMode: !isDark,
+              ),
+            ),
           ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: isDark ? Colors.white : AppColors.lightPrimaryText,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            color: isDark ? Colors.white : AppColors.lightPrimaryText,
-            onPressed: _loadSystemSettings,
+          if (isDark) ...[
+            AnimatedBuilder(
+              animation: _glowAnimationController,
+              builder: (context, child) {
+                return Positioned(
+                  top: -120 + (_glowAnimationController.value * 30),
+                  right: -100 + (_glowAnimationController.value * 20),
+                  child: Container(
+                    width: 360,
+                    height: 360,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFFF59E0B).withOpacity(0.12),
+                          const Color(0xFF7B61FF).withOpacity(0.02),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    child: Text(
+                      "System Settings",
+                      style: TextStyle(
+                        color: isDark ? Colors.white : const Color(0xFF070B19),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Geist',
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: Curves.easeOutCubic,
+                      duration: const Duration(milliseconds: 600),
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 40 * (1.0 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: _buildSystemStatusCard(isDark),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final item = _settingsMenuItems[index];
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        curve: Curves.easeOutCubic,
+                        duration: Duration(milliseconds: 600 + (index * 80)),
+                        builder: (context, value, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 30 * (1.0 - value)),
+                            child: Opacity(
+                              opacity: value,
+                              child: _buildSettingsMenuItem(
+                                icon: item['icon'],
+                                title: item['title'],
+                                subtitle: item['subtitle'],
+                                isDark: isDark,
+                                onTap: item['onTap'],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }, childCount: _settingsMenuItems.length),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(color: Color(0xFF3B82F6)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading system settings...',
-                      style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.black54,
-                        fontSize: 12,
-                        fontFamily: 'Geist',
+    );
+  }
+
+  Widget _buildSystemStatusCard(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.06),
+          width: 1.2,
+        ),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.01)]
+              : [
+                  Colors.black.withOpacity(0.02),
+                  Colors.black.withOpacity(0.005),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                // Avatar / Icon
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF59E0B).withOpacity(0.25),
+                          blurRadius: 16,
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.settings_rounded,
+                        color: Colors.white,
+                        size: 40,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              )
-            : _errorMessage != null
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading settings',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.black54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _loadSystemSettings,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                      ),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+
+                Text(
+                  "System Administration",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF070B19),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Geist',
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSystemStatusCard(isDark),
-                    const SizedBox(height: 16),
-                    _buildEmergencyControlCard(isDark),
-                    const SizedBox(height: 16),
-                    _buildSystemSettingsCard(isDark),
-                    const SizedBox(height: 16),
-                    _buildQuickActionsCard(isDark),
-                    const SizedBox(height: 24),
-                  ],
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.black.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "CPI Admin Panel • CST Department",
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Geist',
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.04)
+                          : Colors.black.withOpacity(0.04),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildInfoItem("Version", "2.4.0", isDark),
+                      _buildVerticalDivider(isDark),
+                      _buildInfoItem("Environment", "Production", isDark),
+                      _buildVerticalDivider(isDark),
+                      _buildInfoItem("Status", "Active", isDark),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider(bool isDark) {
+    return Container(
+      height: 24,
+      width: 1,
+      color: isDark
+          ? Colors.white.withOpacity(0.08)
+          : Colors.black.withOpacity(0.08),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value, bool isDark) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Color(0xFFF59E0B),
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'Geist',
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            fontFamily: 'Geist',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.06),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            splashColor: const Color(0xFFF59E0B).withOpacity(0.1),
+            highlightColor: const Color(0xFFD97706).withOpacity(0.05),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              color: isDark
+                  ? Colors.white.withOpacity(0.02)
+                  : Colors.white.withOpacity(0.6),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.15),
+                      ),
+                    ),
+                    child: Icon(icon, color: const Color(0xFFF59E0B), size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF070B19),
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Geist',
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.5)
+                                : const Color(0xFF64748B),
+                            fontSize: 12,
+                            fontFamily: 'Geist',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.2),
+                    size: 14,
+                  ),
+                ],
               ),
+            ),
+          ),
+        ),
       ),
     );
   }
