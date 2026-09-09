@@ -1,19 +1,35 @@
 import 'package:flutter/material.dart';
 import 'colors.dart';
+import '../services/offline_storage_service.dart';
 
 class AppThemeController {
   static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
     ThemeMode.dark,
   );
 
+  static void initialize() {
+    final isDark = OfflineStorageService.getDarkMode(defaultValue: true);
+    themeModeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+  }
+
   static bool get isDarkMode => themeModeNotifier.value == ThemeMode.dark;
 
   static void setLightMode() {
     themeModeNotifier.value = ThemeMode.light;
+    OfflineStorageService.setDarkMode(false);
   }
 
   static void setDarkMode() {
     themeModeNotifier.value = ThemeMode.dark;
+    OfflineStorageService.setDarkMode(true);
+  }
+
+  static void toggleTheme() {
+    if (isDarkMode) {
+      setLightMode();
+    } else {
+      setDarkMode();
+    }
   }
 
   static ThemeData get lightTheme => ThemeData(

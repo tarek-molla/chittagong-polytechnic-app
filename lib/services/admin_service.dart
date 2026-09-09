@@ -1,11 +1,15 @@
 // =============================================================================
 // lib/services/admin_service.dart
 // Centralized Admin Service for CPI Admin Panel
-// Handles all admin operations: Dashboard stats, User management, Activity feed
+// Handles all admin operations: Dashboard stats, User management, Activity feed,
+// with robust offline caching and offline sync queueing.
 // =============================================================================
 
+import 'dart:async';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'offline_storage_service.dart';
 
 class AdminService {
   final SupabaseClient _supabase;
@@ -16,8 +20,21 @@ class AdminService {
   // DASHBOARD STATS
   // ===========================================================================
 
-  /// Get real-time dashboard statistics for a department
+  /// Get real-time dashboard statistics for a department with offline caching
   Future<Map<String, dynamic>> getDashboardStats(String department) async {
+    final cacheKey = '${OfflineStorageService.keyDashboardStats}_$department';
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    Map<String, dynamic> defaultStats = {
+      'totalStudents': 0,
+      'activeFaculty': 0,
+      'pendingAdmissions': 0,
+      'liveClassrooms': 0,
+    };
+
+    if (cached != null && cached is Map) {
+      defaultStats = Map<String, dynamic>.from(cached);
+    }
+
     try {
       final client = _supabase;
 
@@ -58,20 +75,18 @@ class AdminService {
           .lte('start_time', currentTime)
           .gte('end_time', currentTime);
 
-      return {
+      final stats = {
         'totalStudents': studentsResponse.length,
         'activeFaculty': facultyResponse.length,
         'pendingAdmissions': admissionsResponse.length,
         'liveClassrooms': liveClassesResponse.length,
       };
+
+      await OfflineStorageService.cacheData(cacheKey, stats);
+      return stats;
     } catch (e) {
-      print('❌ Error fetching dashboard stats: $e');
-      return {
-        'totalStudents': 0,
-        'activeFaculty': 0,
-        'pendingAdmissions': 0,
-        'liveClassrooms': 0,
-      };
+      debugPrint('⚠️ Error fetching dashboard stats (returning cached): $e');
+      return defaultStats;
     }
   }
 
@@ -79,10 +94,8 @@ class AdminService {
   Stream<Map<String, dynamic>> getDashboardStatsStream(
     String department,
   ) async* {
-    // Initial fetch
     yield await getDashboardStats(department);
 
-    // Listen for changes using periodic refresh
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
       final updated = await getDashboardStats(department);
       yield updated;
@@ -93,8 +106,16 @@ class AdminService {
   // DEPARTMENT STATS
   // ===========================================================================
 
-  /// Get student count per department
+  /// Get student count per department with offline caching
   Future<Map<String, int>> getDepartmentStats() async {
+    const cacheKey = '${OfflineStorageService.keyDashboardStats}_departments';
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    Map<String, int> defaultStats = {};
+
+    if (cached != null && cached is Map) {
+      defaultStats = Map<String, int>.from(cached);
+    }
+
     try {
       final client = _supabase;
       final departments = ['CST', 'CIVIL', 'EE', 'ME', 'ECT'];
@@ -109,10 +130,11 @@ class AdminService {
         stats[dept] = response.length;
       }
 
+      await OfflineStorageService.cacheData(cacheKey, stats);
       return stats;
     } catch (e) {
-      print('❌ Error fetching department stats: $e');
-      return {};
+      debugPrint('⚠️ Error fetching department stats (returning cached): $e');
+      return defaultStats;
     }
   }
 
@@ -131,13 +153,7 @@ class AdminService {
   /// Toggle user active status
   Future<bool> toggleUserStatus(String table, String id, bool isActive) async {
     try {
-      await _supabase
-          .from(table)
-          .update({
-            'is_active': isActive,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from(table).update({'is_active': isActive}).eq('id', id);
       return true;
     } catch (e) {
       print('❌ Error toggling user status: $e');
@@ -145,16 +161,10 @@ class AdminService {
     }
   }
 
-  /// Delete user (soft delete)
+  /// Delete user (hard delete)
   Future<bool> deleteUser(String table, String id) async {
     try {
-      await _supabase
-          .from(table)
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from(table).delete().eq('id', id);
       return true;
     } catch (e) {
       print('❌ Error deleting user: $e');
@@ -162,10 +172,16 @@ class AdminService {
     }
   }
 
-  /// Get all students for a department
+  /// Get all students for a department with instant offline cache fallback
   Stream<List<Map<String, dynamic>>> getStudentsStream(
     String department,
   ) async* {
+    final cacheKey = '${OfflineStorageService.keyStudents}_$department';
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('students_login')
@@ -174,10 +190,11 @@ class AdminService {
           .eq('is_active', true)
           .order('roll_number', ascending: true);
 
-      yield List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(cacheKey, list);
+      yield list;
     } catch (e) {
-      print('❌ Error fetching students: $e');
-      yield [];
+      debugPrint('⚠️ Error fetching students: $e');
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -188,42 +205,106 @@ class AdminService {
             .eq('department', department)
             .eq('is_active', true)
             .order('roll_number', ascending: true);
-        yield List<Map<String, dynamic>>.from(response);
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(cacheKey, list);
+        yield list;
       } catch (e) {
-        print('❌ Error refreshing students: $e');
+        debugPrint('⚠️ Error refreshing students: $e');
       }
     }
   }
 
-  /// Get all teachers for a department
+  /// Get all teachers for a department with instant offline cache fallback
   Stream<List<Map<String, dynamic>>> getTeachersStream(
     String department,
   ) async* {
-    try {
-      final response = await _supabase
-          .from('teachers_login')
-          .select()
-          .eq('department', department)
-          .order('name', ascending: true);
+    final cacheKey = '${OfflineStorageService.keyTeachers}_$department';
+    final controller = StreamController<List<Map<String, dynamic>>>();
+    DateTime lastFetch = DateTime.fromMillisecondsSinceEpoch(0);
 
-      yield List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('❌ Error fetching teachers: $e');
-      yield [];
+    // Immediately yield cached teachers if available
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      controller.add(cached.map((e) => Map<String, dynamic>.from(e as Map)).toList());
     }
 
-    await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
+    Future<void> emitFresh() async {
       try {
         final response = await _supabase
             .from('teachers_login')
             .select()
             .eq('department', department)
             .order('name', ascending: true);
-        yield List<Map<String, dynamic>>.from(response);
+        lastFetch = DateTime.now();
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(cacheKey, list);
+        if (!controller.isClosed) {
+          controller.add(list);
+        }
       } catch (e) {
-        print('❌ Error refreshing teachers: $e');
+        debugPrint('⚠️ Error fetching teachers: $e');
       }
     }
+
+    // Initial fetch
+    await emitFresh();
+
+    // Realtime subscription (instant updates on INSERT/UPDATE/DELETE)
+    final channel = _supabase.channel('teachers:$department');
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'teachers_login',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'department',
+            value: department,
+          ),
+          callback: (payload) async {
+            await emitFresh();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'teachers_login',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'department',
+            value: department,
+          ),
+          callback: (payload) async {
+            await emitFresh();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'teachers_login',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'department',
+            value: department,
+          ),
+          callback: (payload) async {
+            await emitFresh();
+          },
+        );
+    channel.subscribe();
+
+    // Polling fallback in case realtime is unavailable
+    final timer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (DateTime.now().difference(lastFetch) >= const Duration(seconds: 28)) {
+        await emitFresh();
+      }
+    });
+
+    yield* controller.stream;
+
+    timer.cancel();
+    channel.unsubscribe();
+    await _supabase.removeChannel(channel);
   }
 
   /// Create a new teacher
@@ -256,9 +337,13 @@ class AdminService {
     Map<String, dynamic> data,
   ) async {
     try {
+      final updateData = Map<String, dynamic>.from(data);
+      updateData.remove('updated_at');
+      updateData.remove('created_at');
+
       final response = await _supabase
           .from('teachers_login')
-          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
@@ -272,25 +357,33 @@ class AdminService {
   /// Create a new student
   Future<Map<String, dynamic>?> createStudent(Map<String, dynamic> data) async {
     try {
+      // ✅ FIX: semester column is int, form dialog returns String
+      final semester = int.tryParse(data['semester']?.toString() ?? '1') ?? 1;
+      final admissionYear =
+          int.tryParse(
+            data['admission_year']?.toString() ??
+                DateTime.now().year.toString(),
+          ) ??
+          DateTime.now().year;
+
       final response = await _supabase
           .from('students_login')
           .insert({
             'roll_number': data['roll_number'],
             'student_name': data['student_name'],
             'department': data['department'],
-            'semester': data['semester'],
+            'semester': semester,
             'email': data['email'],
             'password': data['password'] ?? 'student123',
-            'phone': data['phone'],
-            'address': data['address'],
-            'guardian_name': data['guardian_name'],
-            'guardian_phone': data['guardian_phone'],
-            'admission_year': data['admission_year'],
+            'phone': data['phone'] ?? '',
+            'address': data['address'] ?? '',
+            'guardian_name': data['guardian_name'] ?? '',
+            'guardian_phone': data['guardian_phone'] ?? '',
+            'admission_year': admissionYear,
             'is_active': true,
             'role': 'student',
-            'class_name': data['class_name'],
+            'class_name': data['class_name'] ?? '',
             'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
           })
           .select()
           .single();
@@ -307,9 +400,27 @@ class AdminService {
     Map<String, dynamic> data,
   ) async {
     try {
+      final updateData = Map<String, dynamic>.from(data);
+      updateData.remove('updated_at');
+      updateData.remove('created_at');
+      updateData.remove('id');
+      updateData.remove('roll_number');
+
+      // ✅ FIX: semester column is int, form dialog returns String
+      if (updateData.containsKey('semester')) {
+        updateData['semester'] =
+            int.tryParse(updateData['semester'].toString()) ?? 1;
+      }
+
+      // ✅ FIX: admission_year column is int
+      if (updateData.containsKey('admission_year')) {
+        updateData['admission_year'] =
+            int.tryParse(updateData['admission_year'].toString()) ?? 2024;
+      }
+
       final response = await _supabase
           .from('students_login')
-          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
@@ -320,21 +431,21 @@ class AdminService {
     }
   }
 
-  // ===========================================================================
-  // ACTIVITY FEED
-  // ===========================================================================
-
-  /// Get recent activity across all tables
+  /// Get recent activity across all tables with instant offline cache fallback
   Stream<List<Map<String, dynamic>>> getRecentActivity() async* {
+    const cacheKey = OfflineStorageService.keyActivities;
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final client = _supabase;
-
-      // Fetch recent activities from multiple tables
       final activities = <Map<String, dynamic>>[];
 
-      // Recent admissions
+      // Recent applications
       final admissions = await client
-          .from('admissions')
+          .from('applications')
           .select('id, full_name, department, status, created_at')
           .order('created_at', ascending: false)
           .limit(10);
@@ -383,16 +494,16 @@ class AdminService {
         });
       }
 
-      // Sort by time
       activities.sort(
         (a, b) =>
-            DateTime.parse(b['time']).compareTo(DateTime.parse(a['time'])),
+            DateTime.parse(b['time'].toString()).compareTo(DateTime.parse(a['time'].toString())),
       );
 
-      yield activities.take(20).toList();
+      final result = activities.take(20).toList();
+      await OfflineStorageService.cacheData(cacheKey, result);
+      yield result;
     } catch (e) {
-      print('❌ Error fetching activity: $e');
-      yield [];
+      debugPrint('⚠️ Error fetching activity: $e');
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -401,7 +512,7 @@ class AdminService {
         final activities = <Map<String, dynamic>>[];
 
         final admissions = await client
-            .from('admissions')
+            .from('applications')
             .select('id, full_name, department, status, created_at')
             .order('created_at', ascending: false)
             .limit(10);
@@ -450,71 +561,14 @@ class AdminService {
 
         activities.sort(
           (a, b) =>
-              DateTime.parse(b['time']).compareTo(DateTime.parse(a['time'])),
+              DateTime.parse(b['time'].toString()).compareTo(DateTime.parse(a['time'].toString())),
         );
-        yield activities.take(20).toList();
+        final result = activities.take(20).toList();
+        await OfflineStorageService.cacheData(cacheKey, result);
+        yield result;
       } catch (e) {
-        print('❌ Error refreshing activity: $e');
+        debugPrint('⚠️ Error refreshing activity: $e');
       }
-    }
-  }
-
-  // ===========================================================================
-  // SYSTEM SETTINGS
-  // ===========================================================================
-
-  /// Load system settings from Supabase
-  Future<Map<String, dynamic>> loadSystemSettings() async {
-    try {
-      final client = _supabase;
-
-      // Try to load from system_settings table first
-      try {
-        final response = await client.from('system_settings').select().single();
-        return Map<String, dynamic>.from(response);
-      } catch (e) {
-        // If table doesn't exist, return default settings
-        print('System settings table not found, using defaults: $e');
-        return {
-          'isEmergencyModeActive': false,
-          'isSystemMaintenanceMode': false,
-          'isNotificationsEnabled': true,
-          'isAutoBackupEnabled': true,
-          'selectedDepartment': 'CST',
-        };
-      }
-    } catch (e) {
-      print('❌ Error loading system settings: $e');
-      return {
-        'isEmergencyModeActive': false,
-        'isSystemMaintenanceMode': false,
-        'isNotificationsEnabled': true,
-        'isAutoBackupEnabled': true,
-        'selectedDepartment': 'CST',
-      };
-    }
-  }
-
-  /// Update system setting in Supabase
-  Future<bool> updateSystemSetting(String key, dynamic value) async {
-    try {
-      final client = _supabase;
-
-      // Try to update in system_settings table
-      try {
-        await client
-            .from('system_settings')
-            .update({key: value})
-            .eq('id', 'default');
-        return true;
-      } catch (e) {
-        // If table doesn't exist, just simulate the update
-        print('System settings table not found, simulating update: $e');
-        return true;
-      }
-    } catch (e) {
-      print('❌ Error updating system setting: $e');
-      return false;
     }
   }
 
@@ -524,7 +578,7 @@ class AdminService {
 
   /// Auto-generate roll number: YYYYDEPT####
   String generateRollNumber(String department, int admissionYear) {
-    final year = admissionYear.toString().substring(2); // Last 2 digits
+    final year = admissionYear.toString().substring(2);
     final deptCode = department.toUpperCase().substring(0, 3);
     final random = (DateTime.now().millisecondsSinceEpoch % 10000)
         .toString()
@@ -536,10 +590,16 @@ class AdminService {
   // ROUTINE MANAGEMENT
   // ===========================================================================
 
-  /// Get routine stream for a department
+  /// Get routine stream for a department with instant offline cache fallback
   Stream<List<Map<String, dynamic>>> getRoutineStream(
     String department,
   ) async* {
+    final cacheKey = '${OfflineStorageService.keyRoutine}_$department';
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('routine')
@@ -549,10 +609,11 @@ class AdminService {
           .order('day', ascending: true)
           .order('start_time', ascending: true);
 
-      yield List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(cacheKey, list);
+      yield list;
     } catch (e) {
-      print('❌ Error fetching routine: $e');
-      yield [];
+      debugPrint('⚠️ Error fetching routine: $e');
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -564,38 +625,50 @@ class AdminService {
             .eq('is_active', true)
             .order('day', ascending: true)
             .order('start_time', ascending: true);
-        yield List<Map<String, dynamic>>.from(response);
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(cacheKey, list);
+        yield list;
       } catch (e) {
-        print('❌ Error refreshing routine: $e');
+        debugPrint('⚠️ Error refreshing routine: $e');
       }
     }
   }
 
   /// Create routine entry
   Future<Map<String, dynamic>?> createRoutine(Map<String, dynamic> data) async {
+    final rowData = {
+      'department': data['department'],
+      'semester': int.tryParse(data['semester']?.toString() ?? '1') ?? 1,
+      'day': data['day'],
+      'subject_name': data['subject_name'],
+      'teacher_name': data['teacher_name'],
+      'room': data['room'],
+      'start_time': data['start_time'],
+      'end_time': data['end_time'],
+      'type': data['type'] ?? 'Theory',
+      'color': data['color'] ?? '#3B82F6',
+      'is_active': true,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'routine',
+        'action': 'insert',
+        'data': rowData,
+      });
+      return rowData;
+    }
+
     try {
       final response = await _supabase
           .from('routine')
-          .insert({
-            'department': data['department'],
-            'semester': data['semester'],
-            'day': data['day'],
-            'subject_name': data['subject_name'],
-            'teacher_name': data['teacher_name'],
-            'room': data['room'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-            'type': data['type'] ?? 'Theory',
-            'color': data['color'] ?? '#3B82F6',
-            'is_active': true,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .insert(rowData)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error creating routine: $e');
+      debugPrint('❌ Error creating routine: $e');
       return null;
     }
   }
@@ -605,33 +678,51 @@ class AdminService {
     String id,
     Map<String, dynamic> data,
   ) async {
+    final updateData = Map<String, dynamic>.from(data);
+    updateData.remove('updated_at');
+    updateData.remove('created_at');
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'routine',
+        'action': 'update',
+        'id': id,
+        'data': updateData,
+      });
+      return updateData;
+    }
+
     try {
       final response = await _supabase
           .from('routine')
-          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error updating routine: $e');
+      debugPrint('❌ Error updating routine: $e');
       return null;
     }
   }
 
   /// Delete routine entry (soft delete)
   Future<bool> deleteRoutine(String id) async {
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'routine',
+        'action': 'update',
+        'id': id,
+        'data': {'is_active': false},
+      });
+      return true;
+    }
+
     try {
-      await _supabase
-          .from('routine')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from('routine').update({'is_active': false}).eq('id', id);
       return true;
     } catch (e) {
-      print('❌ Error deleting routine: $e');
+      debugPrint('❌ Error deleting routine: $e');
       return false;
     }
   }
@@ -640,8 +731,14 @@ class AdminService {
   // NOTICE MANAGEMENT
   // ===========================================================================
 
-  /// Get notices stream
+  /// Get notices stream with instant offline cache fallback
   Stream<List<Map<String, dynamic>>> getNoticesStream() async* {
+    const cacheKey = OfflineStorageService.keyNotices;
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('notices')
@@ -649,10 +746,11 @@ class AdminService {
           .eq('is_active', true)
           .order('created_at', ascending: false);
 
-      yield List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(cacheKey, list);
+      yield list;
     } catch (e) {
-      print('❌ Error fetching notices: $e');
-      yield [];
+      debugPrint('⚠️ Error fetching notices: $e');
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -662,34 +760,46 @@ class AdminService {
             .select()
             .eq('is_active', true)
             .order('created_at', ascending: false);
-        yield List<Map<String, dynamic>>.from(response);
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(cacheKey, list);
+        yield list;
       } catch (e) {
-        print('❌ Error refreshing notices: $e');
+        debugPrint('⚠️ Error refreshing notices: $e');
       }
     }
   }
 
   /// Create notice
   Future<Map<String, dynamic>?> createNotice(Map<String, dynamic> data) async {
+    final rowData = {
+      'title': data['title'],
+      'content': data['content'],
+      'priority': data['priority'] ?? 'normal',
+      'category': data['category'] ?? 'GENERAL',
+      'department': data['department'],
+      'action_url': data['action_url'],
+      'is_active': true,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'notices',
+        'action': 'insert',
+        'data': rowData,
+      });
+      return rowData;
+    }
+
     try {
       final response = await _supabase
           .from('notices')
-          .insert({
-            'title': data['title'],
-            'content': data['content'],
-            'priority': data['priority'] ?? 'normal',
-            'category': data['category'] ?? 'GENERAL',
-            'department': data['department'],
-            'action_url': data['action_url'],
-            'is_active': true,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .insert(rowData)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error creating notice: $e');
+      debugPrint('❌ Error creating notice: $e');
       return null;
     }
   }
@@ -699,57 +809,81 @@ class AdminService {
     String id,
     Map<String, dynamic> data,
   ) async {
+    final updateData = Map<String, dynamic>.from(data);
+    updateData.remove('updated_at');
+    updateData.remove('created_at');
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'notices',
+        'action': 'update',
+        'id': id,
+        'data': updateData,
+      });
+      return updateData;
+    }
+
     try {
       final response = await _supabase
           .from('notices')
-          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error updating notice: $e');
+      debugPrint('❌ Error updating notice: $e');
       return null;
     }
   }
 
   /// Delete notice (soft delete)
   Future<bool> deleteNotice(String id) async {
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'notices',
+        'action': 'update',
+        'id': id,
+        'data': {'is_active': false},
+      });
+      return true;
+    }
+
     try {
-      await _supabase
-          .from('notices')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from('notices').update({'is_active': false}).eq('id', id);
       return true;
     } catch (e) {
-      print('❌ Error deleting notice: $e');
+      debugPrint('❌ Error deleting notice: $e');
       return false;
     }
   }
 
   // ===========================================================================
-  // RESULTS MANAGEMENT
+  // RESULTS MANAGEMENT - FIXED WITH IS_ACTIVE
   // ===========================================================================
 
-  /// Get results stream
+  /// Get results stream - Shows ALL results (with instant offline cache fallback)
   Stream<List<Map<String, dynamic>>> getResultsStream(
     String department,
   ) async* {
+    const cacheKey = OfflineStorageService.keyResults;
+    final cached = OfflineStorageService.getCachedData(cacheKey);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('results')
           .select()
-          .eq('department', department)
           .eq('is_active', true)
-          .order('created_at', ascending: false);
+          .order('id', ascending: false);
 
-      yield List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(cacheKey, list);
+      yield list;
     } catch (e) {
-      print('❌ Error fetching results: $e');
-      yield [];
+      debugPrint('⚠️ Error fetching results: $e');
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -757,40 +891,72 @@ class AdminService {
         final response = await _supabase
             .from('results')
             .select()
-            .eq('department', department)
             .eq('is_active', true)
-            .order('created_at', ascending: false);
-        yield List<Map<String, dynamic>>.from(response);
+            .order('id', ascending: false);
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(cacheKey, list);
+        yield list;
       } catch (e) {
-        print('❌ Error refreshing results: $e');
+        debugPrint('⚠️ Error refreshing results: $e');
       }
     }
   }
 
-  /// Create result
+  /// Create result - With is_active & offline queue support
   Future<Map<String, dynamic>?> createResult(Map<String, dynamic> data) async {
+    final rowData = {
+      'roll_num': data['roll_num'],
+      'reg_num': data['reg_num'],
+      'student_name': data['student_name'],
+      'semester': data['semester'],
+      'department': data['department'],
+      'subject_code': data['subject_code'],
+      'subject_name': data['subject_name'],
+      'credits': int.tryParse(data['credits']?.toString() ?? '3') ?? 3,
+      'theory_continuous':
+          double.tryParse(data['theory_continuous']?.toString() ?? '0') ?? 0,
+      'theory_continuous_max':
+          double.tryParse(
+            data['theory_continuous_max']?.toString() ?? '100',
+          ) ??
+          100,
+      'practical_continuous':
+          double.tryParse(data['practical_continuous']?.toString() ?? '0') ?? 0,
+      'practical_continuous_max':
+          double.tryParse(
+            data['practical_continuous_max']?.toString() ?? '100',
+          ) ??
+          100,
+      'final_exam':
+          double.tryParse(data['final_exam']?.toString() ?? '0') ?? 0,
+      'final_exam_max':
+          double.tryParse(data['final_exam_max']?.toString() ?? '100') ?? 100,
+      'grade': data['grade'],
+      'grade_point':
+          double.tryParse(data['grade_point']?.toString() ?? '0') ?? 0.0,
+      'gpa': double.tryParse(data['gpa']?.toString() ?? '0') ?? 0.0,
+      'is_active': true,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'results',
+        'action': 'insert',
+        'data': rowData,
+      });
+      return rowData;
+    }
+
     try {
       final response = await _supabase
           .from('results')
-          .insert({
-            'roll_number': data['roll_number'],
-            'student_name': data['student_name'],
-            'semester': data['semester'],
-            'subject_code': data['subject_code'],
-            'subject_name': data['subject_name'],
-            'grade': data['grade'],
-            'grade_point': data['grade_point'],
-            'total_marks': data['total_marks'],
-            'obtained_marks': data['obtained_marks'],
-            'is_active': true,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
+          .insert(rowData)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error creating result: $e');
+      debugPrint('❌ Error creating result: $e');
       return null;
     }
   }
@@ -800,33 +966,73 @@ class AdminService {
     String id,
     Map<String, dynamic> data,
   ) async {
+    final updateData = {
+      'theory_continuous':
+          double.tryParse(data['theory_continuous']?.toString() ?? '0') ?? 0,
+      'theory_continuous_max':
+          double.tryParse(
+            data['theory_continuous_max']?.toString() ?? '100',
+          ) ??
+          100,
+      'practical_continuous':
+          double.tryParse(data['practical_continuous']?.toString() ?? '0') ?? 0,
+      'practical_continuous_max':
+          double.tryParse(
+            data['practical_continuous_max']?.toString() ?? '100',
+          ) ??
+          100,
+      'final_exam':
+          double.tryParse(data['final_exam']?.toString() ?? '0') ?? 0,
+      'final_exam_max':
+          double.tryParse(data['final_exam_max']?.toString() ?? '100') ?? 100,
+      'grade': data['grade'],
+      'grade_point':
+          double.tryParse(data['grade_point']?.toString() ?? '0') ?? 0.0,
+      'gpa': double.tryParse(data['gpa']?.toString() ?? '0') ?? 0.0,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'results',
+        'action': 'update',
+        'id': id,
+        'data': updateData,
+      });
+      return updateData;
+    }
+
     try {
       final response = await _supabase
           .from('results')
-          .update({...data, 'updated_at': DateTime.now().toIso8601String()})
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
       return response;
     } catch (e) {
-      print('❌ Error updating result: $e');
+      debugPrint('❌ Error updating result: $e');
       return null;
     }
   }
 
-  /// Delete result (soft delete)
+  /// Delete result - Soft delete using is_active
   Future<bool> deleteResult(String id) async {
+    if (!OfflineStorageService.isOnline) {
+      await OfflineStorageService.addToSyncQueue({
+        'table': 'results',
+        'action': 'update',
+        'id': id,
+        'data': {'is_active': false},
+      });
+      return true;
+    }
+
     try {
-      await _supabase
-          .from('results')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id);
+      await _supabase.from('results').update({'is_active': false}).eq('id', id);
       return true;
     } catch (e) {
-      print('❌ Error deleting result: $e');
+      debugPrint('❌ Error deleting result: $e');
       return false;
     }
   }

@@ -7,9 +7,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cpi_app/core/theme_provider.dart';
-import 'package:cpi_app/core/colors.dart';
+import 'package:cpi_app/core/router.dart';
 import 'package:cpi_app/models/user.dart';
-import 'package:cpi_app/services/supabase_service.dart';
 import 'package:cpi_app/widgets/animated_background_painter.dart';
 
 class SystemSettingsView extends StatefulWidget {
@@ -36,7 +35,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
 
   // Data
   bool _isLoading = true;
-  bool _isSaving = false;
+  final bool _isSaving = false;
 
   @override
   void initState() {
@@ -45,12 +44,17 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat(reverse: true);
-
+    AppThemeController.themeModeNotifier.addListener(_themeListener);
     _loadSettings();
+  }
+
+  void _themeListener() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    AppThemeController.themeModeNotifier.removeListener(_themeListener);
     _glowAnimationController.dispose();
     super.dispose();
   }
@@ -215,7 +219,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -249,7 +253,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
             ],
           ),
         ),
-        Switch(value: value, onChanged: onChanged, activeColor: color),
+        Switch(value: value, onChanged: onChanged, activeThumbColor: color),
       ],
     );
   }
@@ -440,7 +444,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: const Color(0xFFF59E0B),
+          activeThumbColor: const Color(0xFFF59E0B),
         ),
       ],
     );
@@ -510,8 +514,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
                         color: isDark
-                            ? Colors.white.withOpacity(0.24)
-                            : Colors.black.withOpacity(0.24),
+                            ? Colors.white.withValues(alpha: 0.24)
+                            : Colors.black.withValues(alpha: 0.24),
                       ),
                     ),
                     focusedBorder: const UnderlineInputBorder(
@@ -531,8 +535,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(
                         color: isDark
-                            ? Colors.white.withOpacity(0.24)
-                            : Colors.black.withOpacity(0.24),
+                            ? Colors.white.withValues(alpha: 0.24)
+                            : Colors.black.withValues(alpha: 0.24),
                       ),
                     ),
                     focusedBorder: const UnderlineInputBorder(
@@ -638,8 +642,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          const Color(0xFFF59E0B).withOpacity(0.12),
-                          const Color(0xFF7B61FF).withOpacity(0.02),
+                          const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          const Color(0xFF7B61FF).withValues(alpha: 0.02),
                           Colors.transparent,
                         ],
                       ),
@@ -656,15 +660,37 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                    child: Text(
-                      "System Settings",
-                      style: TextStyle(
-                        color: isDark ? Colors.white : const Color(0xFF070B19),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'Geist',
-                        letterSpacing: -0.5,
-                      ),
+                    child: Row(
+                      children: [
+                        if (ModalRoute.of(context)?.settings.name != AppRoutes.adminDashboard)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: isDark ? Colors.white : const Color(0xFF070B19),
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            "System Settings",
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF070B19),
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'Geist',
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -729,16 +755,16 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.06),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
           width: 1.2,
         ),
         gradient: LinearGradient(
           colors: isDark
-              ? [Colors.white.withOpacity(0.05), Colors.white.withOpacity(0.01)]
+              ? [Colors.white.withValues(alpha: 0.05), Colors.white.withValues(alpha: 0.01)]
               : [
-                  Colors.black.withOpacity(0.02),
-                  Colors.black.withOpacity(0.005),
+                  Colors.black.withValues(alpha: 0.02),
+                  Colors.black.withValues(alpha: 0.005),
                 ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -758,7 +784,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFFF59E0B).withOpacity(0.3),
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -774,7 +800,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFF59E0B).withOpacity(0.25),
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
                           blurRadius: 16,
                         ),
                       ],
@@ -808,8 +834,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                   ),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.black.withOpacity(0.04),
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -827,13 +853,13 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.black.withOpacity(0.2)
-                        : Colors.black.withOpacity(0.02),
+                        ? Colors.black.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.02),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
-                          ? Colors.white.withOpacity(0.04)
-                          : Colors.black.withOpacity(0.04),
+                          ? Colors.white.withValues(alpha: 0.04)
+                          : Colors.black.withValues(alpha: 0.04),
                     ),
                   ),
                   child: Row(
@@ -860,8 +886,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
       height: 24,
       width: 1,
       color: isDark
-          ? Colors.white.withOpacity(0.08)
-          : Colors.black.withOpacity(0.08),
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.08),
     );
   }
 
@@ -904,8 +930,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.06),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
         ),
       ),
       child: ClipRRect(
@@ -915,22 +941,22 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(20),
-            splashColor: const Color(0xFFF59E0B).withOpacity(0.1),
-            highlightColor: const Color(0xFFD97706).withOpacity(0.05),
+            splashColor: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+            highlightColor: const Color(0xFFD97706).withValues(alpha: 0.05),
             child: Container(
               padding: const EdgeInsets.all(16),
               color: isDark
-                  ? Colors.white.withOpacity(0.02)
-                  : Colors.white.withOpacity(0.6),
+                  ? Colors.white.withValues(alpha: 0.02)
+                  : Colors.white.withValues(alpha: 0.6),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withOpacity(0.08),
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFF59E0B).withOpacity(0.15),
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                       ),
                     ),
                     child: Icon(icon, color: const Color(0xFFF59E0B), size: 20),
@@ -957,7 +983,7 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                           subtitle,
                           style: TextStyle(
                             color: isDark
-                                ? Colors.white.withOpacity(0.5)
+                                ? Colors.white.withValues(alpha: 0.5)
                                 : const Color(0xFF64748B),
                             fontSize: 12,
                             fontFamily: 'Geist',
@@ -970,8 +996,8 @@ class _SystemSettingsViewState extends State<SystemSettingsView>
                   Icon(
                     Icons.arrow_forward_ios_rounded,
                     color: isDark
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.black.withOpacity(0.2),
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.2),
                     size: 14,
                   ),
                 ],

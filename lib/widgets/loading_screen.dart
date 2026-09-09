@@ -101,7 +101,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF1D4ED8).withOpacity(0.3),
+                              color: const Color(0xFF1D4ED8).withValues(alpha: 0.3),
                               blurRadius: 35,
                               offset: const Offset(0, 15),
                             ),
@@ -165,7 +165,7 @@ class _LoadingScreenState extends State<LoadingScreen>
                             height: 4,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: LayoutBuilder(
@@ -275,7 +275,7 @@ class _BookSvgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
 
     // Outer SVG Path scaling

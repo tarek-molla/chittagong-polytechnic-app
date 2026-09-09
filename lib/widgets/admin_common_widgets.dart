@@ -40,15 +40,15 @@ class AdminGlassCard extends StatelessWidget {
                 color:
                     borderColor ??
                     (isDark
-                        ? Colors.white.withOpacity(0.08)
-                        : Colors.black.withOpacity(0.05)),
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05)),
               )
             : null,
         boxShadow:
             boxShadow ??
             [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -62,8 +62,8 @@ class AdminGlassCard extends StatelessWidget {
             color:
                 backgroundColor ??
                 (isDark
-                    ? Colors.white.withOpacity(0.04)
-                    : Colors.white.withOpacity(0.85)),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.white.withValues(alpha: 0.85)),
             padding: padding,
             child: child,
           ),
@@ -134,16 +134,16 @@ class _AdminSearchBarState extends State<AdminSearchBar> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.black.withOpacity(0.05),
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           color: isDark
-              ? Colors.white.withOpacity(0.04)
-              : Colors.white.withOpacity(0.85),
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.white.withValues(alpha: 0.85),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
@@ -225,17 +225,17 @@ class AdminFilterChips extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFFF59E0B).withOpacity(0.3)
+                      ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
                       : (isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.black.withOpacity(0.03)),
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.03)),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected
                         ? const Color(0xFFF59E0B)
                         : (isDark
-                              ? Colors.white.withOpacity(0.15)
-                              : Colors.black.withOpacity(0.1)),
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.black.withValues(alpha: 0.1)),
                     width: isSelected ? 1.5 : 1.0,
                   ),
                 ),
@@ -302,8 +302,8 @@ class _AdminLoadingShimmerState extends State<AdminLoadingShimmer>
             width: widget.width ?? double.infinity,
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.04)
-                  : Colors.white.withOpacity(0.8),
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(16),
             ),
           ),
@@ -338,16 +338,16 @@ class AdminEmptyState extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.04)
-                  : Colors.white.withOpacity(0.8),
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.8),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
               size: 64,
               color: isDark
-                  ? Colors.white.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.2),
+                  ? Colors.white.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.2),
             ),
           ),
           const SizedBox(height: 24),
@@ -398,8 +398,8 @@ class AdminErrorState extends StatelessWidget {
             Icons.error_outline_rounded,
             size: 64,
             color: isDark
-                ? Colors.red.withOpacity(0.6)
-                : Colors.red.withOpacity(0.5),
+                ? Colors.red.withValues(alpha: 0.6)
+                : Colors.red.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -464,9 +464,9 @@ class AdminStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(isDark ? 0.15 : 0.1),
+        color: color.withValues(alpha: isDark ? 0.15 : 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(isDark ? 0.3 : 0.2)),
+        border: Border.all(color: color.withValues(alpha: isDark ? 0.3 : 0.2)),
       ),
       child: Text(
         status.toUpperCase(),

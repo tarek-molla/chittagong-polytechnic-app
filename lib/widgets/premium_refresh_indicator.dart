@@ -281,7 +281,7 @@ class _MinimalEqualizerVisual extends StatelessWidget {
         width: 10.0,
         height: barHeight,
         decoration: BoxDecoration(
-          color: accent.withOpacity(opacity),
+          color: accent.withValues(alpha: opacity),
           borderRadius: BorderRadius.circular(2),
         ),
       ),

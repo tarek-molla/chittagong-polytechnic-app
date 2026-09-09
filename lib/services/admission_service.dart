@@ -1,11 +1,12 @@
 // =============================================================================
 // lib/services/admission_service.dart
 // Admission Service for CPI Admin Panel
-// Handles applications + auto-student creation on approval
+// Handles applications + auto-student creation on approval + offline caching
 // =============================================================================
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'admin_service.dart';
+import 'offline_storage_service.dart';
 
 class AdmissionService {
   final SupabaseClient _supabase;
@@ -15,33 +16,46 @@ class AdmissionService {
     : _supabase = client ?? Supabase.instance.client,
       _adminService = AdminService(client ?? Supabase.instance.client);
 
-  /// Get all applications from the admissions table
+  /// Get all applications from the applications table
   Future<List<Map<String, dynamic>>> getApplications() async {
+    // Try to return cached data immediately if offline
+    final cached = OfflineStorageService.getCachedData(OfflineStorageService.keyApplications);
+    List<Map<String, dynamic>> initialList = [];
+    if (cached != null && cached is List) {
+      initialList = cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('applications')
           .select()
           .order('created_at', ascending: false);
 
-      print('📊 Found ${response.length} applications');
-      return List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(OfflineStorageService.keyApplications, list);
+      return list;
     } catch (e) {
-      print('❌ Error fetching applications: $e');
-      return [];
+      return initialList;
     }
   }
 
-  /// Stream of applications (real-time)
+  /// Stream of applications (real-time) with offline cache fallback
   Stream<List<Map<String, dynamic>>> getApplicationsStream() async* {
+    final cached = OfflineStorageService.getCachedData(OfflineStorageService.keyApplications);
+    if (cached != null && cached is List) {
+      yield cached.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     try {
       final response = await _supabase
           .from('applications')
           .select()
           .order('created_at', ascending: false);
-      yield List<Map<String, dynamic>>.from(response);
+      final list = List<Map<String, dynamic>>.from(response);
+      await OfflineStorageService.cacheData(OfflineStorageService.keyApplications, list);
+      yield list;
     } catch (e) {
-      print('❌ Error fetching applications: $e');
-      yield [];
+      // Offline or network error - cached already yielded
     }
 
     await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
@@ -50,10 +64,10 @@ class AdmissionService {
             .from('applications')
             .select()
             .order('created_at', ascending: false);
-        yield List<Map<String, dynamic>>.from(response);
-      } catch (e) {
-        print('❌ Error refreshing applications: $e');
-      }
+        final list = List<Map<String, dynamic>>.from(response);
+        await OfflineStorageService.cacheData(OfflineStorageService.keyApplications, list);
+        yield list;
+      } catch (_) {}
     }
   }
 

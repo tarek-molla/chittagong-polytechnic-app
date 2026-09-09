@@ -7,13 +7,15 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cpi_app/core/theme_provider.dart';
 import 'package:cpi_app/core/colors.dart';
+import 'package:cpi_app/core/router.dart';
 import 'package:cpi_app/models/user.dart';
+import 'package:cpi_app/models/user_role.dart' as role_model;
 import 'package:cpi_app/services/admin_service.dart';
 import 'package:cpi_app/widgets/admin_common_widgets.dart';
 import 'package:cpi_app/widgets/admin_dialogs.dart';
+import 'package:cpi_app/widgets/animated_background_painter.dart';
 import 'package:cpi_app/services/supabase_service.dart';
 
 class FacultyManagementView extends StatefulWidget {
@@ -25,9 +27,11 @@ class FacultyManagementView extends StatefulWidget {
   State<FacultyManagementView> createState() => _FacultyManagementViewState();
 }
 
-class _FacultyManagementViewState extends State<FacultyManagementView> {
+class _FacultyManagementViewState extends State<FacultyManagementView>
+    with SingleTickerProviderStateMixin {
   final AdminService _adminService = AdminService(SupabaseService.client);
-  late StreamSubscription<List<Map<String, dynamic>>> _subscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _subscription;
+  late AnimationController _bgAnimController;
 
   List<Map<String, dynamic>> _faculty = [];
   List<Map<String, dynamic>> _filteredFaculty = [];
@@ -38,12 +42,23 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
   @override
   void initState() {
     super.initState();
+    _bgAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat(reverse: true);
+    AppThemeController.themeModeNotifier.addListener(_themeListener);
     _loadFaculty();
   }
 
+  void _themeListener() {
+    if (mounted) setState(() {});
+  }
+
+  String get _department => widget.user.department?.shortCode ?? 'CST';
+
   void _loadFaculty() {
     _subscription = _adminService
-        .getTeachersStream('CST')
+        .getTeachersStream(_department)
         .listen(
           (faculty) {
             if (mounted) {
@@ -112,7 +127,7 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
           key: 'department',
           label: 'Department',
           dropdownItems: ['CST', 'CIVIL', 'EE', 'ME', 'ECT'],
-          initialValue: 'CST',
+          initialValue: _department,
         ),
         FormFieldConfig(
           key: 'designation',
@@ -259,13 +274,16 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
 
   @override
   void dispose() {
-    _subscription.cancel();
+    AppThemeController.themeModeNotifier.removeListener(_themeListener);
+    _bgAnimController.dispose();
+    _subscription?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppThemeController.isDarkMode;
+    final isStandaloneRoute = ModalRoute.of(context)?.settings.name != AppRoutes.adminDashboard;
 
     return Scaffold(
       backgroundColor: isDark
@@ -273,7 +291,7 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
           : AppColors.lightBackground,
       appBar: AppBar(
         title: Text(
-          'Faculty Management',
+          'Faculty Roster',
           style: TextStyle(
             fontFamily: 'Geist',
             fontWeight: FontWeight.w900,
@@ -283,33 +301,58 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: isDark ? Colors.white : AppColors.lightPrimaryText,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: isStandaloneRoute
+            ? IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : AppColors.lightPrimaryText,
+                  size: 18,
+                ),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
+                },
+              )
+            : null,
         actions: [
           IconButton(
-            icon: Icon(Icons.add_rounded, color: const Color(0xFFF59E0B)),
+            icon: const Icon(Icons.add_rounded, color: Color(0xFFF59E0B)),
             onPressed: _createFaculty,
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AdminSearchBar(
-                onChanged: _filterFaculty,
-                hintText: 'Search by name or ID...',
-              ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _bgAnimController,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: AnimatedBackgroundPainter(
+                    animation: _bgAnimController,
+                    isLightMode: !isDark,
+                    role: role_model.UserRole.admin,
+                  ),
+                );
+              },
             ),
-            Expanded(child: _buildContent(isDark)),
-          ],
-        ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: AdminSearchBar(
+                    onChanged: _filterFaculty,
+                    hintText: 'Search by name or faculty ID...',
+                  ),
+                ),
+                Expanded(child: _buildContent(isDark)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -381,8 +424,8 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.08)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
           ),
         ),
         child: ClipRRect(
@@ -391,8 +434,8 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
             filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               color: isDark
-                  ? Colors.white.withOpacity(0.04)
-                  : Colors.white.withOpacity(0.85),
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.85),
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,10 +448,10 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
                         decoration: BoxDecoration(
                           color: const Color(
                             0xFF10B981,
-                          ).withOpacity(isDark ? 0.2 : 0.1),
+                          ).withValues(alpha: isDark ? 0.2 : 0.1),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFF10B981).withOpacity(0.3),
+                            color: const Color(0xFF10B981).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Center(
@@ -540,8 +583,8 @@ class _FacultyManagementViewState extends State<FacultyManagementView> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.black.withOpacity(0.03),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

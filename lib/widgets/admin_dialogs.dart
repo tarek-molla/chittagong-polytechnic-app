@@ -62,13 +62,13 @@ class _AdminConfirmDialog extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.95),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.12)
-                    : Colors.black.withOpacity(0.08),
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.08),
               ),
             ),
             child: Column(
@@ -77,7 +77,7 @@ class _AdminConfirmDialog extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(isDark ? 0.2 : 0.1),
+                    color: color.withValues(alpha: isDark ? 0.2 : 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -285,13 +285,13 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: widget.isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : Colors.white.withOpacity(0.95),
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: widget.isDark
-                    ? Colors.white.withOpacity(0.12)
-                    : Colors.black.withOpacity(0.08),
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.08),
               ),
             ),
             child: Form(
@@ -313,49 +313,55 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
                     const SizedBox(height: 20),
                     ...widget.fields
                         .map((field) => _buildField(field))
-                        .toList(),
+                        ,
                     const SizedBox(height: 24),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: widget.isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Geist',
-                              ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: widget.isDark
+                                  ? Colors.white70
+                                  : Colors.black54,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Geist',
+                              fontSize: 13,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF59E0B),
-                              foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF59E0B),
+                            foregroundColor: const Color(0xFF1E1B18),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            child: Text(
-                              widget.submitText,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Geist',
-                              ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            widget.submitText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Geist',
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -389,7 +395,7 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
           const SizedBox(height: 8),
           if (field.dropdownItems != null)
             DropdownButtonFormField<String>(
-              value: _dropdownValues[field.key],
+              initialValue: _dropdownValues[field.key],
               dropdownColor: widget.isDark
                   ? const Color(0xFF0D0E12)
                   : Colors.white,
@@ -405,8 +411,8 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
                     color: widget.isDark
-                        ? Colors.white.withOpacity(0.12)
-                        : Colors.black.withOpacity(0.12),
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.12),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -415,8 +421,8 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
                 ),
                 filled: true,
                 fillColor: widget.isDark
-                    ? Colors.white.withOpacity(0.04)
-                    : Colors.white.withOpacity(0.85),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.white.withValues(alpha: 0.85),
               ),
               items: field.dropdownItems!
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
@@ -445,8 +451,8 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
                     color: widget.isDark
-                        ? Colors.white.withOpacity(0.12)
-                        : Colors.black.withOpacity(0.12),
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.12),
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
@@ -455,8 +461,8 @@ class _AdminFormDialogState extends State<_AdminFormDialog> {
                 ),
                 filled: true,
                 fillColor: widget.isDark
-                    ? Colors.white.withOpacity(0.04)
-                    : Colors.white.withOpacity(0.85),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.white.withValues(alpha: 0.85),
               ),
               validator: field.validator,
             ),

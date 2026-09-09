@@ -1,24 +1,23 @@
 // =============================================================================
 // lib/views/admin/admin_dashboard.dart
-// CPI Admin Command Center — Optimized & Fixed Edition
+// CPI Admin Command Center — Connected & Animated Metric Grid Edition
 // =============================================================================
 
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../services/supabase_service.dart';
 import '../../services/admin_service.dart';
 import '../../models/user.dart' as user_model;
-import '../../core/router.dart' show AppRoutes, AdminRouteArgs;
+import '../../core/router.dart'
+    show AppRoutes, AdminRouteArgs, TeacherRouteArgs;
 import '../../core/theme_provider.dart';
 import '../../../widgets/theme_toggle_switch.dart';
 import '../../core/colors.dart';
 import '../../models/user_role.dart' as role_model;
 import '../../widgets/animated_background_painter.dart' hide UserRole;
-import '../components/admin_operations_sheets.dart';
 import '../../widgets/premium_refresh_indicator.dart';
-import 'notice_management_view.dart';
+import '../../widgets/offline_indicator_badge.dart';
 import 'admin_controls_view.dart';
 import 'faculty_management_view.dart';
 import 'system_settings_view.dart';
@@ -44,8 +43,10 @@ class _AdminDashboardState extends State<AdminDashboard>
   late AnimationController _staggerController;
   late AnimationController _pulseController;
   late AnimationController _bgAnimController;
+  late AnimationController _glowController;
 
   late Animation<double> _staggerAnimation;
+  late Animation<double> _fadeAnimation;
 
   double _scrollOffset = 0.0;
   int _currentBgIndex = 0;
@@ -61,8 +62,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     'assets/cpi_bg5.png',
   ];
 
-  // Cache for dashboard stats to reduce rebuilds
-  Map<String, dynamic> _cachedStats = {};
+  Map<String, dynamic> _dashboardStats = {};
+  List<Map<String, dynamic>> _recentActivities = [];
+  bool _isStatsLoading = true;
 
   @override
   void initState() {
@@ -101,8 +103,20 @@ class _AdminDashboardState extends State<AdminDashboard>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 7),
+    )..repeat(reverse: true);
+
     _staggerAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _staggerController, curve: Curves.easeOutCubic),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _contentAnimationController,
+        curve: Curves.easeOut,
+      ),
     );
 
     _profileBgTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
@@ -113,13 +127,8 @@ class _AdminDashboardState extends State<AdminDashboard>
       }
     });
 
-    _contentAnimationController.forward();
-    _staggerController.forward();
-
     AppThemeController.themeModeNotifier.addListener(_themeListener);
-
-    // Pre-load stats
-    _loadStats();
+    _loadDashboardData();
   }
 
   void _themeListener() {
@@ -153,7 +162,6 @@ class _AdminDashboardState extends State<AdminDashboard>
   void _replayAnimations() {
     _contentAnimationController.reset();
     _staggerController.reset();
-
     _contentAnimationController.forward();
     _staggerController.forward();
   }
@@ -166,18 +174,33 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  Future<void> _loadStats() async {
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      _isStatsLoading = true;
+    });
+
     try {
-      final stats = await AdminService(
-        SupabaseService.client,
-      ).getDashboardStats('CST');
+      final adminService = AdminService(SupabaseService.client);
+      final department = widget.user.department?.shortCode ?? 'CST';
+
+      final stats = await adminService.getDashboardStats(department);
+      final activities = await adminService.getRecentActivity().first;
+
       if (mounted) {
         setState(() {
-          _cachedStats = stats;
+          _dashboardStats = stats;
+          _recentActivities = activities;
+          _isStatsLoading = false;
         });
+        _contentAnimationController.forward();
+        _staggerController.forward();
       }
     } catch (e) {
-      print('❌ Error loading stats: $e');
+      if (mounted) {
+        setState(() {
+          _isStatsLoading = false;
+        });
+      }
     }
   }
 
@@ -192,6 +215,7 @@ class _AdminDashboardState extends State<AdminDashboard>
     _staggerController.dispose();
     _bgAnimController.dispose();
     _pulseController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
@@ -372,20 +396,28 @@ class _AdminDashboardState extends State<AdminDashboard>
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            width: 44,
+                            height: 44,
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: const Color(
                                 0xFFF59E0B,
-                              ).withAlpha(isDark ? 15 : 30),
+                              ).withAlpha(isDark ? 20 : 35),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: const Color(0xFFF59E0B).withAlpha(50),
+                                color: const Color(0xFFF59E0B).withAlpha(60),
                               ),
                             ),
-                            child: const Icon(
-                              Icons.admin_panel_settings_rounded,
-                              color: Color(0xFFF59E0B),
-                              size: 20,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/applogo.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (c, e, s) => const Icon(
+                                  Icons.admin_panel_settings_rounded,
+                                  color: Color(0xFFF59E0B),
+                                  size: 20,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -420,27 +452,105 @@ class _AdminDashboardState extends State<AdminDashboard>
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20.0),
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Divider(
                           color: isDark ? Colors.white10 : Colors.black12,
                         ),
                       ),
-                      _buildDrawerFrostedLinkTile(
-                        Icons.info_outline_rounded,
-                        "About Institution",
-                        isDark,
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: [
+                              _buildDrawerFrostedLinkTile(
+                                Icons.supervisor_account_rounded,
+                                "Teacher Roster",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.teacherManagement);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.school_rounded,
+                                "Student Directory",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.studentManagement);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.assessment_rounded,
+                                "Result Portal",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.resultManagement);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.campaign_rounded,
+                                "Notice Board",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.noticeManagement);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.calendar_today_rounded,
+                                "Routine Matrix",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.routineScheduler);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.how_to_reg_rounded,
+                                "Admission Triage",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _navigateToRoute(AppRoutes.admissionTriage);
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.info_outline_rounded,
+                                "About Institution",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.teacherAboutInstitution,
+                                    arguments: TeacherRouteArgs(
+                                      user: widget.user,
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildDrawerFrostedLinkTile(
+                                Icons.security_rounded,
+                                "Privacy & Policy",
+                                isDark,
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.teacherPrivacyPolicy,
+                                    arguments: TeacherRouteArgs(
+                                      user: widget.user,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      _buildDrawerFrostedLinkTile(
-                        Icons.security_rounded,
-                        "Privacy & Policy",
-                        isDark,
-                      ),
-                      _buildDrawerFrostedLinkTile(
-                        Icons.headset_mic_rounded,
-                        "Help & Support Desk",
-                        isDark,
-                      ),
-                      const Spacer(),
+                      const SizedBox(height: 10),
                       _InteractiveScaleButton(
                         onTap: () {
                           Navigator.of(context).pop();
@@ -451,7 +561,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                         },
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
                             color: const Color(
                               0xFFEF4444,
@@ -628,15 +738,12 @@ class _AdminDashboardState extends State<AdminDashboard>
             AnimatedAlign(
               duration: const Duration(milliseconds: 380),
               curve: const Cubic(0.175, 0.885, 0.32, 1.15),
-              alignment: Alignment(
-                -1.0 + (_selectedNavIndex * (2.0 / 3.0)),
-                0.0,
-              ),
+              alignment: Alignment(-1.0 + (_selectedNavIndex * 0.5), 0.0),
               child: FractionallySizedBox(
-                widthFactor: 0.25,
+                widthFactor: 0.2,
                 child: Container(
                   margin: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 4,
                     vertical: 11,
                   ),
                   decoration: BoxDecoration(
@@ -688,6 +795,12 @@ class _AdminDashboardState extends State<AdminDashboard>
                   Icons.settings_outlined,
                   "Settings",
                   index: 3,
+                  isDark: isDark,
+                ),
+                _buildNavbarItem(
+                  Icons.how_to_reg_rounded,
+                  "Intake",
+                  index: 4,
                   isDark: isDark,
                 ),
               ],
@@ -812,6 +925,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  // ===========================================================================
+  // DASHBOARD CONTENT
+  // ===========================================================================
   Widget _buildDashboardContent(
     bool isDark,
     double calculatedAlpha,
@@ -864,6 +980,52 @@ class _AdminDashboardState extends State<AdminDashboard>
               ),
             ),
           ),
+          if (isDark) ...[
+            AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                return Positioned(
+                  top: 240 + (_glowController.value * 30),
+                  left: -80 + (_glowController.value * 20),
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFFF59E0B).withAlpha(30),
+                          const Color(0xFFF59E0B).withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                return Positioned(
+                  bottom: 100 - (_glowController.value * 30),
+                  right: -80 - (_glowController.value * 20),
+                  child: Container(
+                    width: 300,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          const Color(0xFF7B61FF).withAlpha(25),
+                          const Color(0xFF7B61FF).withAlpha(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
           Positioned.fill(
             child: PremiumRefreshIndicator(
               onRefresh: _refreshAll,
@@ -872,169 +1034,7 @@ class _AdminDashboardState extends State<AdminDashboard>
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        20.0,
-                        52.0,
-                        20.0,
-                        36.0,
-                      ),
-                      child: SizedBox(
-                        height: 56,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Builder(
-                                    builder: (context) {
-                                      return InkWell(
-                                        onTap: () => Scaffold.of(
-                                          context,
-                                        ).openEndDrawer(),
-                                        borderRadius: BorderRadius.circular(24),
-                                        child: Container(
-                                          width: 46,
-                                          height: 46,
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white.withAlpha(20)
-                                                : Colors.black.withAlpha(15),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: isDark
-                                                  ? Colors.white.withAlpha(40)
-                                                  : Colors.black.withAlpha(20),
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.admin_panel_settings_rounded,
-                                            color: Color(0xFFF59E0B),
-                                            size: 20,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          widget.user.name.toUpperCase(),
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.white
-                                                : AppColors.lightPrimaryText,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            fontFamily: 'Geist',
-                                            letterSpacing: 0.3,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 1),
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            AnimatedBuilder(
-                                              animation: _pulseController,
-                                              builder: (context, child) {
-                                                return Container(
-                                                  width: 7,
-                                                  height: 7,
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        _isEmergencyModeActive
-                                                        ? const Color(
-                                                            0xFFEF4444,
-                                                          )
-                                                        : const Color(
-                                                            0xFFF59E0B,
-                                                          ),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                _isEmergencyModeActive
-                                                    ? "EMERGENCY MODE • CST DEPT"
-                                                    : "CI SIR • CST DEPT ADMIN",
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: _isEmergencyModeActive
-                                                      ? const Color(0xFFEF4444)
-                                                      : const Color(0xFFF59E0B),
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontFamily: 'Geist',
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const ThemeToggleSwitch(),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  onPressed: () =>
-                                      _openAdminSearchPage(context),
-                                  icon: const Icon(
-                                    Icons.search_rounded,
-                                    color: Color(0xFFF59E0B),
-                                    size: 18,
-                                  ),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: isDark
-                                        ? Colors.white.withAlpha(12)
-                                        : Colors.black.withAlpha(8),
-                                    padding: const EdgeInsets.all(8),
-                                    minimumSize: const Size(36, 36),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  onPressed: () =>
-                                      Navigator.pushReplacementNamed(
-                                        context,
-                                        AppRoutes.login,
-                                      ),
-                                  icon: const Icon(
-                                    Icons.power_settings_new_rounded,
-                                    color: Color(0xFFFFA0A0),
-                                    size: 16,
-                                  ),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: isDark
-                                        ? Colors.white.withAlpha(12)
-                                        : Colors.black.withAlpha(8),
-                                    padding: const EdgeInsets.all(8),
-                                    minimumSize: const Size(36, 36),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                    _buildHeader(isDark),
                     ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(30),
@@ -1070,96 +1070,133 @@ class _AdminDashboardState extends State<AdminDashboard>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildMetricsGrid(isDark),
-                              const SizedBox(height: 24),
-                              Text(
-                                "Department Operations Hub",
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white
-                                      : AppColors.lightPrimaryText,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Geist',
-                                  letterSpacing: 0.5,
-                                ),
+                              // Metrics Grid - Connected to Real-time Stream with Number Counter Animations
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        20 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildMetricsGrid(isDark),
+                                    ),
+                                  );
+                                },
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 24),
 
-                              // Expanded Full CRUD Grid (6 Main Views)
-                              GridView.count(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: 1.35,
-                                children: [
-                                  _buildActionTile(
-                                    "Teacher Roster",
-                                    Icons.supervisor_account_rounded,
-                                    const Color(0xFF10B981),
-                                    () => _navigateToRoute(
-                                      AppRoutes.teacherManagement,
+                              // Department Operations Hub
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        30 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Department Operations Hub",
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppColors.lightPrimaryText,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'Geist',
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          _buildActionGrid(isDark),
+                                        ],
+                                      ),
                                     ),
-                                    isDark,
-                                  ),
-                                  _buildActionTile(
-                                    "Student Directory",
-                                    Icons.school_rounded,
-                                    const Color(0xFF2563EB),
-                                    () => _navigateToRoute(
-                                      AppRoutes.studentManagement,
-                                    ),
-                                    isDark,
-                                  ),
-                                  _buildActionTile(
-                                    "Result Portal",
-                                    Icons.assessment_rounded,
-                                    const Color(0xFF7B61FF),
-                                    () => _navigateToRoute(
-                                      AppRoutes.resultManagement,
-                                    ),
-                                    isDark,
-                                  ),
-                                  _buildActionTile(
-                                    "Notice Board",
-                                    Icons.campaign_rounded,
-                                    const Color(0xFFF59E0B),
-                                    () => _navigateToRoute(
-                                      AppRoutes.noticeManagement,
-                                    ),
-                                    isDark,
-                                  ),
-                                  _buildActionTile(
-                                    "Routine Matrix",
-                                    Icons.calendar_today_rounded,
-                                    const Color(0xFF00E5FF),
-                                    () => _navigateToRoute(
-                                      AppRoutes.routineScheduler,
-                                    ),
-                                    isDark,
-                                  ),
-                                  _buildActionTile(
-                                    "Admission Triage",
-                                    Icons.how_to_reg_rounded,
-                                    const Color(0xFFEF4444),
-                                    () => _navigateToRoute(
-                                      AppRoutes.admissionTriage,
-                                    ),
-                                    isDark,
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
+                              const SizedBox(height: 24),
 
+                              // Emergency Banner
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        40 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildEmergencyBannerToggle(
+                                        isDark,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 24),
-                              _buildEmergencyBannerToggle(isDark),
+
+                              // Semester Chips
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        50 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildSemesterChipsBlock(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 24),
-                              _buildSemesterChipsBlock(isDark),
+
+                              // Live System Dispatch Logs
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        60 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildLiveSystemTerminal(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 24),
-                              _buildLiveSystemTerminal(isDark),
-                              const SizedBox(height: 24),
-                              _buildDepartmentSection(isDark),
+
+                              // Department Roster
+                              AnimatedBuilder(
+                                animation: _staggerAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _staggerAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                        0,
+                                        70 * (1 - _staggerAnimation.value),
+                                      ),
+                                      child: _buildDepartmentSection(isDark),
+                                    ),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
@@ -1175,13 +1212,178 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  // ===========================================================================
+  // HEADER
+  // ===========================================================================
+  Widget _buildHeader(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20.0, 52.0, 20.0, 36.0),
+      child: SizedBox(
+        height: 56,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Builder(
+                    builder: (context) {
+                      return InkWell(
+                        onTap: () => Scaffold.of(context).openEndDrawer(),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withAlpha(20)
+                                : Colors.black.withAlpha(15),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withAlpha(40)
+                                  : Colors.black.withAlpha(20),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.admin_panel_settings_rounded,
+                            color: Color(0xFFF59E0B),
+                            size: 20,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.user.name.toUpperCase(),
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.lightPrimaryText,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Geist',
+                            letterSpacing: 0.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 1),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedBuilder(
+                              animation: _pulseController,
+                              builder: (context, child) {
+                                return Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: _isEmergencyModeActive
+                                        ? const Color(0xFFEF4444)
+                                        : const Color(0xFFF59E0B),
+                                    shape: BoxShape.circle,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                _isEmergencyModeActive
+                                    ? "EMERGENCY MODE • CST DEPT"
+                                    : "CI SIR • CST DEPT ADMIN",
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: _isEmergencyModeActive
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFFF59E0B),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Geist',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const OfflineIndicatorBadge(),
+                const SizedBox(width: 8),
+                const ThemeToggleSwitch(),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _openAdminSearchPage(context),
+                  icon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 18,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isDark
+                        ? Colors.white.withAlpha(12)
+                        : Colors.black.withAlpha(8),
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(36, 36),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () =>
+                      Navigator.pushReplacementNamed(context, AppRoutes.login),
+                  icon: const Icon(
+                    Icons.power_settings_new_rounded,
+                    color: Color(0xFFFFA0A0),
+                    size: 16,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isDark
+                        ? Colors.white.withAlpha(12)
+                        : Colors.black.withAlpha(8),
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(36, 36),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // METRICS GRID - ANIMATED COUNTERS CONNECTED TO DATABASE
+  // ===========================================================================
   Widget _buildMetricsGrid(bool isDark) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: AdminService(
         SupabaseService.client,
-      ).getDashboardStatsStream('CST'),
+      ).getDashboardStatsStream(widget.user.department?.shortCode ?? 'CST'),
       builder: (context, snapshot) {
-        final stats = snapshot.data ?? _cachedStats;
+        final stats = snapshot.data ?? _dashboardStats;
+        final totalStudents =
+            (stats['totalStudents'] as num?)?.toDouble() ?? 0.0;
+        final activeFaculty =
+            (stats['activeFaculty'] as num?)?.toDouble() ?? 0.0;
+        final pendingIntake =
+            (stats['pendingAdmissions'] as num?)?.toDouble() ?? 0.0;
+        final liveClassrooms =
+            (stats['liveClassrooms'] as num?)?.toDouble() ?? 0.0;
+
         return LayoutBuilder(
           builder: (context, constraints) {
             final cardWidth = (constraints.maxWidth - 12) / 2;
@@ -1189,37 +1391,45 @@ class _AdminDashboardState extends State<AdminDashboard>
               spacing: 12,
               runSpacing: 12,
               children: [
-                _buildMetricGlassCard(
+                _buildAnimatedMetricGlassCard(
                   "Total Students",
-                  "${stats['totalStudents'] ?? 0}",
+                  totalStudents,
                   Icons.groups_rounded,
                   const Color(0xFF00E5FF),
                   cardWidth,
                   isDark,
+                  isInteger: true,
+                  onTap: () => _navigateToRoute(AppRoutes.studentManagement),
                 ),
-                _buildMetricGlassCard(
+                _buildAnimatedMetricGlassCard(
                   "Active Faculty",
-                  "${stats['activeFaculty'] ?? 0}",
+                  activeFaculty,
                   Icons.badge_rounded,
                   const Color(0xFF10B981),
                   cardWidth,
                   isDark,
+                  isInteger: true,
+                  onTap: () => _navigateToRoute(AppRoutes.teacherManagement),
                 ),
-                _buildMetricGlassCard(
+                _buildAnimatedMetricGlassCard(
                   "Pending Intake",
-                  "${stats['pendingAdmissions'] ?? 0}",
+                  pendingIntake,
                   Icons.pending_actions_rounded,
                   const Color(0xFFF59E0B),
                   cardWidth,
                   isDark,
+                  isInteger: true,
+                  onTap: () => _navigateToRoute(AppRoutes.admissionTriage),
                 ),
-                _buildMetricGlassCard(
+                _buildAnimatedMetricGlassCard(
                   "Live Classrooms",
-                  "${stats['liveClassrooms'] ?? 0}",
+                  liveClassrooms,
                   Icons.meeting_room_rounded,
                   const Color(0xFF7B61FF),
                   cardWidth,
                   isDark,
+                  isInteger: true,
+                  onTap: () => _navigateToRoute(AppRoutes.routineScheduler),
                 ),
               ],
             );
@@ -1229,77 +1439,151 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
-  Widget _buildMetricGlassCard(
+  Widget _buildAnimatedMetricGlassCard(
     String title,
-    String value,
+    double targetValue,
     IconData icon,
     Color accentColor,
     double width,
-    bool isDark,
-  ) {
-    return SizedBox(
-      width: width,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withAlpha(8)
-                  : Colors.white.withAlpha(200),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+    bool isDark, {
+    required bool isInteger,
+    required VoidCallback onTap,
+  }) {
+    return _InteractiveScaleButton(
+      onTap: onTap,
+      child: SizedBox(
+        width: width,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withAlpha(12)
-                    : AppColors.lightCardBorder,
+                    ? Colors.white.withAlpha(8)
+                    : Colors.white.withAlpha(200),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withAlpha(12)
+                      : AppColors.lightCardBorder,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(icon, color: accentColor, size: 20),
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        shape: BoxShape.circle,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(icon, color: accentColor, size: 20),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.0, end: targetValue),
+                    duration: const Duration(milliseconds: 1400),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      final displayString = isInteger
+                          ? value.toInt().toString()
+                          : value.toStringAsFixed(1);
+                      return Text(
+                        displayString,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'Geist',
+                          letterSpacing: -0.5,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isDark
+                          ? Colors.white.withAlpha(150)
+                          : Colors.black54,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Geist',
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Geist',
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isDark
-                        ? Colors.white.withAlpha(150)
-                        : Colors.black54,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Geist',
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ===========================================================================
+  // ACTION GRID
+  // ===========================================================================
+  Widget _buildActionGrid(bool isDark) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.35,
+      children: [
+        _buildActionTile(
+          "Teacher Roster",
+          Icons.supervisor_account_rounded,
+          const Color(0xFF10B981),
+          () => _navigateToRoute(AppRoutes.teacherManagement),
+          isDark,
+        ),
+        _buildActionTile(
+          "Student Directory",
+          Icons.school_rounded,
+          const Color(0xFF2563EB),
+          () => _navigateToRoute(AppRoutes.studentManagement),
+          isDark,
+        ),
+        _buildActionTile(
+          "Result Portal",
+          Icons.assessment_rounded,
+          const Color(0xFF7B61FF),
+          () => _navigateToRoute(AppRoutes.resultManagement),
+          isDark,
+        ),
+        _buildActionTile(
+          "Notice Board",
+          Icons.campaign_rounded,
+          const Color(0xFFF59E0B),
+          () => _navigateToRoute(AppRoutes.noticeManagement),
+          isDark,
+        ),
+        _buildActionTile(
+          "Routine Matrix",
+          Icons.calendar_today_rounded,
+          const Color(0xFF00E5FF),
+          () => _navigateToRoute(AppRoutes.routineScheduler),
+          isDark,
+        ),
+        _buildActionTile(
+          "Admission Triage",
+          Icons.how_to_reg_rounded,
+          const Color(0xFFEF4444),
+          () => _navigateToRoute(AppRoutes.admissionTriage),
+          isDark,
+        ),
+      ],
     );
   }
 
@@ -1355,6 +1639,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  // ===========================================================================
+  // EMERGENCY BANNER TOGGLE
+  // ===========================================================================
   Widget _buildEmergencyBannerToggle(bool isDark) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -1445,6 +1732,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  // ===========================================================================
+  // SEMESTER CHIPS
+  // ===========================================================================
   Widget _buildSemesterChipsBlock(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1531,6 +1821,9 @@ class _AdminDashboardState extends State<AdminDashboard>
     return 'th';
   }
 
+  // ===========================================================================
+  // LIVE SYSTEM DISPATCH LOGS
+  // ===========================================================================
   Widget _buildLiveSystemTerminal(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1564,7 +1857,7 @@ class _AdminDashboardState extends State<AdminDashboard>
         StreamBuilder<List<Map<String, dynamic>>>(
           stream: AdminService(SupabaseService.client).getRecentActivity(),
           builder: (context, snapshot) {
-            final activities = snapshot.data ?? [];
+            final activities = snapshot.data ?? _recentActivities;
             return ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: BackdropFilter(
@@ -1604,14 +1897,19 @@ class _AdminDashboardState extends State<AdminDashboard>
                           ]
                         : List.generate(activities.length.clamp(0, 4), (idx) {
                             final log = activities[idx];
+                            final time = log['time'] ?? '';
+                            final action = (log['type'] ?? 'EVENT')
+                                .toString()
+                                .toUpperCase();
+                            final details = log['title'] ?? 'System Event';
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
                               child: _TerminalLogRow(
-                                time: log['time'] ?? '12:00',
-                                action: (log['type'] ?? 'EVENT')
-                                    .toString()
-                                    .toUpperCase(),
-                                details: log['title'] ?? 'System Event',
+                                time: time is String ? time : time.toString(),
+                                action: action,
+                                details: details is String
+                                    ? details
+                                    : details.toString(),
                                 color: const Color(0xFF10B981),
                               ),
                             );
@@ -1626,11 +1924,21 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  // ===========================================================================
+  // DEPARTMENT ROSTER
+  // ===========================================================================
   Widget _buildDepartmentSection(bool isDark) {
     return StreamBuilder<Map<String, int>>(
       stream: AdminService(SupabaseService.client).getDepartmentStatsStream(),
       builder: (context, snapshot) {
         final stats = snapshot.data ?? {};
+        final cstCount = stats['CST'] ?? 0;
+        final civilCount = stats['CIVIL'] ?? 0;
+        final eeCount = stats['EE'] ?? 0;
+        final meCount = stats['ME'] ?? 0;
+        final ectCount = stats['ECT'] ?? 0;
+        final total = cstCount + civilCount + eeCount + meCount + ectCount;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1662,25 +1970,19 @@ class _AdminDashboardState extends State<AdminDashboard>
                         : AppColors.lightCardBorder,
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Text(
-                      "CST Active Enrollment",
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      "${stats['CST'] ?? 0} Students",
-                      style: const TextStyle(
-                        color: Color(0xFFF59E0B),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
+                    _buildDepartmentRow("CST", cstCount, isDark),
+                    const SizedBox(height: 8),
+                    _buildDepartmentRow("CIVIL", civilCount, isDark),
+                    const SizedBox(height: 8),
+                    _buildDepartmentRow("EE", eeCount, isDark),
+                    const SizedBox(height: 8),
+                    _buildDepartmentRow("ME", meCount, isDark),
+                    const SizedBox(height: 8),
+                    _buildDepartmentRow("ECT", ectCount, isDark),
+                    const Divider(height: 16),
+                    _buildDepartmentRow("Total", total, isDark, isBold: true),
                   ],
                 ),
               ),
@@ -1691,13 +1993,87 @@ class _AdminDashboardState extends State<AdminDashboard>
     );
   }
 
+  Widget _buildDepartmentRow(
+    String name,
+    int count,
+    bool isDark, {
+    bool isBold = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          name,
+          style: TextStyle(
+            color: isDark
+                ? (isBold ? Colors.white : Colors.white70)
+                : (isBold ? Colors.black87 : Colors.black54),
+            fontSize: isBold ? 14 : 13,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            fontFamily: 'Geist',
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withAlpha(15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFF59E0B).withAlpha(30)),
+          ),
+          child: Text(
+            "$count Students",
+            style: TextStyle(
+              color: const Color(0xFFF59E0B),
+              fontSize: isBold ? 13 : 12,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              fontFamily: 'Geist',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // REFRESH
+  // ===========================================================================
   Future<void> _refreshAll() async {
     setState(() {});
     _staggerController.forward(from: 0);
-    await _loadStats();
+    await _loadDashboardData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Dashboard refreshed',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 
+// ===========================================================================
+// TERMINAL LOG ROW
+// ===========================================================================
 class _TerminalLogRow extends StatelessWidget {
   final String time;
   final String action;
@@ -1713,13 +2089,16 @@ class _TerminalLogRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppThemeController.isDarkMode;
+    final displayTime = time.length > 10 ? time.substring(0, 19) : time;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "[$time]",
-          style: const TextStyle(
-            color: Colors.white70,
+          "[$displayTime]",
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
             fontSize: 10,
             fontFamily: 'monospace',
             fontWeight: FontWeight.bold,
@@ -1746,8 +2125,8 @@ class _TerminalLogRow extends StatelessWidget {
         Expanded(
           child: Text(
             details,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black54,
               fontSize: 10.5,
               fontFamily: 'Geist',
             ),
@@ -1760,6 +2139,9 @@ class _TerminalLogRow extends StatelessWidget {
   }
 }
 
+// ===========================================================================
+// INTERACTIVE SCALE BUTTON
+// ===========================================================================
 class _InteractiveScaleButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
