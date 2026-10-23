@@ -1,65 +1,80 @@
-# 🏛️ CPI Command Center
-
-> The ultimate, modern mobile management ecosystem for **Chattogram Polytechnic Institute (CPI)**. Streamlining class routines, instant campus notices, and academic administration into one sleek, high-performance application.
-
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
-![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge)
-
----
-
-## 🌟 Overview
-
-**CPI Command Center** bridges the communication gap between students, department faculty, and college administration at Chattogram Polytechnic Institute. Built with Flutter and backed by Supabase, it provides real-time access to daily class routines, official notices, department updates, and academic resources through a ultra-responsive glassmorphic dark-themed interface.
-
----
-
-## ✨ Key Features
-
-- 📅 **Smart Class Routines:** Instant access to shift, group, and semester-specific class schedules with live teacher update overlays.
-- 📢 **Real-time Notice Board:** Filterable official college notices, exam schedules, and department announcements with instant push notifications.
-- 👨‍🎓 **Student Hub:** Personalized dashboard for tracking academic progress, syllabus guides, and lab schedules.
-- 👨‍🏫 **Faculty & Admin Portal:** Admin tools for real-time schedule modifications, notice publication, and routine management.
-- ⚡ **Realtime Database & Sync:** Low-latency dynamic updates powered by Supabase PostgreSQL and Realtime sockets.
-- 🎨 **Modern Dark/Glassmorphism UI:** Built with deep slate foundations, frosted glass containers, and energetic glowing highlights.
-
----
-
-## 📱 App Screenshots
-
-| Dynamic Routine | Campus Notice Board | Student Dashboard |
-| :---: | :---: | :---: |
-| _`[ Add Routine Screenshot ]`_ | _`[ Add Notice Screenshot ]`_ | _`[ Add Dashboard Screenshot ]`_ |
-
----
-
-## 🛠️ Tech Stack
-
-- **Frontend:** [Flutter](https://flutter.dev/) (Dart)
-- **Backend as a Service (BaaS):** [Supabase](https://supabase.com/)
-  - Database: PostgreSQL
-  - Authentication: Supabase Auth
-  - Storage: Supabase Buckets (Notices, Documents, Profiles)
-- **State Management:** Provider / Riverpod
-- **Local Storage:** `shared_preferences` / Hive
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Before starting, ensure you have the following installed:
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>=3.0.0`)
-* [Dart SDK](https://dart.dev/get-started/sdk)
-* [Git](https://git-scm.com/)
-* A [Supabase](https://supabase.com/) project instance
-
-### Installation & Setup
-
-1. **Clone the Repository:**
-   ```bash
-   git clone [https://github.com/tarek-molla/chittagong-polytechnic-app.git](https://github.com/tarek-molla/chittagong-polytechnic-app.git)
-   cd chittagong-polytechnic-app
+================================================================================
+🏛️ CPI COMMAND CENTER 🏛️
+The Ultimate Management & Routine Portal for Chittagong Polytechnic
+​[Flutter]  [Dart]  [Supabase]  [License: MIT]  [PRs Welcome]
+​📖 OVERVIEW
+​CPI Command Center bridges the daily communication gap between students, department
+faculty, and college administration at Chattogram Polytechnic Institute (CPI).
+​Built with Flutter and backed by Supabase, the app delivers fast, real-time access
+to class routines, exam alerts, campus updates, and academic resources through an
+intuitive, modern dark-themed mobile experience.
+​✨ KEY FEATURES
+​• 📅 Smart Class Routines
+Instant access to shift, group, and semester-specific class schedules with
+live teacher update overlays.
+​• 📢 Real-Time Notice Board
+Filterable official college notices, exam schedules, and department updates
+with push notifications.
+​• 👨‍🎓 Student Academic Hub
+Personalized dashboard for tracking academic progress, syllabus guides, and
+lab schedules.
+​• 👨‍🏫 Faculty & Admin Portal
+Admin tools for instant schedule updates, notice publication, and routine
+management.
+​• ⚡ Low-Latency Data Sync
+Dynamic updates powered by Supabase PostgreSQL and Realtime sockets.
+​🛠️ TECH STACK
+​• Frontend: Flutter (Dart)
+• Backend (BaaS): Supabase
+​Database: PostgreSQL
+​Auth: Supabase Auth
+​Storage: Supabase Buckets (Notices, Documents, Profiles)
+• State Management: Provider / Riverpod
+• Local Cache: shared_preferences / Hive
+​🚀 GETTING STARTED
+​PREREQUISITES:
+​Flutter SDK (>= 3.0.0)
+​Dart SDK
+​Git
+​A Supabase project instance
+​INSTALLATION:
+​Clone the repository:
+git clone https://github.com/tarek-molla/chittagong-polytechnic-app.git
+cd chittagong-polytechnic-app
+​Install dependencies:
+flutter pub get
+​Setup environment variables:
+Create a .env file in the root directory and add your Supabase keys:
+SUPABASE_URL=https://your-supabase-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+​Run the application:
+flutter run
+​📂 PROJECT STRUCTURE
+​lib/
+├── core/
+│   ├── constants/       # App colors, themes, and configuration
+│   ├── services/        # Supabase client & API services
+│   └── utils/           # Helper functions & form validators
+├── models/              # Data models (Routine, Notice, User, Department)
+├── providers/           # State management & reactive logic
+├── views/
+│   ├── auth/            # Login & authentication views
+│   ├── dashboard/       # Main navigation & landing screens
+│   ├── routine/         # Class schedules & time tables
+│   └── notices/         # Realtime notice feeds & details
+└── main.dart            # Application entry point
+​🤝 CONTRIBUTING
+​Contributions make the open-source community an incredible place to learn,
+inspire, and create. Any contributions are greatly appreciated!
+​Fork the project
+​Create your feature branch (git checkout -b feature/NewFeature)
+​Commit your changes (git commit -m 'Add NewFeature')
+​Push to the branch (git push origin feature/NewFeature)
+​Open a Pull Request
+​📜 LICENSE & AUTHOR
+​Distributed under the MIT License.
+​Author: Tarek Molla
+GitHub: https://github.com/tarek-molla
+Student at Chattogram Polytechnic Institute (Computer Technology)
+​================================================================================
+Crafted with ❤️ for the students and faculty of Chattogram Polytechnic.
